@@ -110,99 +110,88 @@ class PortoSeguro
     }
     
     /**
-     * Gera XML para envio de lote RPS
+     * Gera XML para envio de lote RPS (ajustado para padrão Porto Seguro)
      * @param array $dados
+     * @param string|null $signatureRps XML da assinatura do RPS (opcional)
+     * @param string|null $signatureLote XML da assinatura do Lote (opcional)
      * @return string
      */
-    private static function gerarXmlLoteRps($dados)
+    public static function gerarXmlLoteRps($dados, $signatureRps = null, $signatureLote = null)
     {
-        $xml = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><EnviarLoteRpsEnvio xmlns="http://www.abrasf.org.br/nfse.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.abrasf.org.br/nfse.xsd EnviarLoteRpsEnvio.xsd"></EnviarLoteRpsEnvio>');
-
-        // Adiciona elemento LoteRps com atributos obrigatórios
-        $loteRps = $xml->addChild('LoteRps');
-        $loteRps->addAttribute('Id', 'Lote_' . $dados['numeroLote']);
-        $loteRps->addAttribute('versao', '2.02');
-        
-        $loteRps->addChild('NumeroLote', $dados['numeroLote']);
-        
-        $cpfCnpj = $loteRps->addChild('CpfCnpj');
-        $cpfCnpj = $loteRps->addChild('CpfCnpj');
-        $cpfCnpj->addChild('Cnpj', $dados['cnpjPrestador']);
-        
-        $loteRps->addChild('InscricaoMunicipal', $dados['inscricaoMunicipal']);
-        $loteRps->addChild('QuantidadeRps', $dados['quantidadeRps']);
-        
-        $listaRps = $loteRps->addChild('ListaRps');
-        
-        foreach ($dados['rps'] as $index => $rps) {
-            $rpsNode = $listaRps->addChild('Rps');
-            
-            $infRps = $rpsNode->addChild('InfDeclaracaoPrestacaoServico');
-            $infRps->addAttribute('Id', 'loteRPS_' . $index);
-            
-            $rpsChild = $infRps->addChild('Rps');
-            
-            $identificacao = $rpsChild->addChild('IdentificacaoRps');
-            $identificacao->addChild('Numero', $rps['infRps']['numero']);
-            $identificacao->addChild('Serie', $rps['infRps']['serie']);
-            $identificacao->addChild('Tipo', $rps['infRps']['tipo']);
-            
-            $rpsChild->addChild('DataEmissao', $rps['infRps']['dataEmissao']);
-            $rpsChild->addChild('Status', '1');
-            
-            $infRps->addChild('Competencia', $rps['competencia']);
-            
-            $servico = $infRps->addChild('Servico');
-            
-            $valores = $servico->addChild('Valores');
-            $valores->addChild('ValorServicos', $rps['valorServicos'] ?? '0.00');
-            
-            $servico->addChild('IssRetido', $rps['issRetido'] ?? '2');
-            $servico->addChild('ItemListaServico', $rps['itemListaServico']);
-            $servico->addChild('CodigoCnae', $rps['codigoCnae'] ?? '');
-            $servico->addChild('CodigoTributacaoMunicipio', $rps['codigoTributacaoMunicipio']);
-            $servico->addChild('Discriminacao', $rps['discriminacao']);
-            $servico->addChild('CodigoMunicipio', $rps['codigoMunicipio']);
-            $servico->addChild('ExigibilidadeISS', $rps['exigibilidadeISS'] ?? '1');
-            $servico->addChild('MunicipioIncidencia', $rps['codigoMunicipio']);
-            
-            $prestador = $infRps->addChild('Prestador');
-            $prestadorCpfCnpj = $prestador->addChild('CpfCnpj');
-            // Prestador com estrutura completa
-            $prestador->addChild('RazaoSocial', $dados['prestador']['razao_social']);
-            $enderecoPrestador = $prestador->addChild('Endereco');
-            $enderecoPrestador->addChild('Logradouro', $dados['prestador']['logradouro']);
-            $enderecoPrestador->addChild('Numero', $dados['prestador']['numero']);
-            $enderecoPrestador->addChild('Bairro', $dados['prestador']['bairro']);
-            $enderecoPrestador->addChild('CodigoMunicipio', $dados['prestador']['codigo_municipio']);
-            $enderecoPrestador->addChild('UF', $dados['prestador']['uf']);
-            $enderecoPrestador->addChild('CEP', $dados['prestador']['cep']);
-            
-            $tomador = $infRps->addChild('Tomador');
-            $identificacaoTomador = $tomador->addChild('IdentificacaoTomador');
-            $tomadorCpfCnpj = $identificacaoTomador->addChild('CpfCnpj');
-            $tomadorCpfCnpj->addChild('Cnpj', $rps['tomador']['cpfCnpj']);
-            // Dados completos do tomador
-            $tomador->addChild('RazaoSocial', $rps['tomador']['razaoSocial']);
-            $enderecoTomador = $tomador->addChild('Endereco');
-            $enderecoTomador->addChild('Logradouro', $rps['tomador']['endereco']['logradouro']);
-            $enderecoTomador->addChild('Numero', $rps['tomador']['endereco']['numero']);
-            $enderecoTomador->addChild('Bairro', $rps['tomador']['endereco']['bairro']);
-            $enderecoTomador->addChild('CodigoMunicipio', $rps['tomador']['endereco']['codigoMunicipio']);
-            $enderecoTomador->addChild('UF', $rps['tomador']['endereco']['uf']);
-            $enderecoTomador->addChild('CEP', $rps['tomador']['endereco']['cep']);
-            $contatoTomador = $tomador->addChild('Contato');
-            $contatoTomador->addChild('Telefone', $rps['tomador']['telefone'] ?? '');
-            $contatoTomador->addChild('Email', $rps['tomador']['email'] ?? '');
-            $tomador->addChild('RazaoSocial', $rps['tomador']['razaoSocial']);
-            
-            // Removendo bloco duplicado de endereço/contato
-            
-            $infRps->addChild('OptanteSimplesNacional', $rps['optanteSimplesNacional'] ?? '2');
-            $infRps->addChild('IncentivoFiscal', $rps['incentivoFiscal'] ?? '2');
+        $xml = '<?xml version="1.0" encoding="utf-8"?>';
+        $xml .= '<EnviarLoteRpsEnvio xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.abrasf.org.br/nfse.xsd">';
+        $xml .= '<LoteRps Id="' . htmlspecialchars($dados['lote_id'] ?? 'Lote1', ENT_XML1) . '" versao="2.02">';
+        $xml .= '<NumeroLote>' . htmlspecialchars($dados['numeroLote'], ENT_XML1) . '</NumeroLote>';
+        $xml .= '<CpfCnpj><Cnpj>' . htmlspecialchars($dados['cnpjPrestador'], ENT_XML1) . '</Cnpj></CpfCnpj>';
+        $xml .= '<InscricaoMunicipal>' . htmlspecialchars($dados['inscricaoMunicipal'], ENT_XML1) . '</InscricaoMunicipal>';
+        $xml .= '<QuantidadeRps>' . htmlspecialchars($dados['quantidadeRps'], ENT_XML1) . '</QuantidadeRps>';
+        $xml .= '<ListaRps>';
+        foreach ($dados['rps'] as $rps) {
+            $xml .= '<Rps>';
+            $xml .= '<InfDeclaracaoPrestacaoServico Id="' . htmlspecialchars($rps['inf_id'] ?? 'Rps1', ENT_XML1) . '">';
+            $xml .= '<Rps>';
+            $xml .= '<IdentificacaoRps>';
+            $xml .= '<Numero>' . htmlspecialchars($rps['infRps']['numero'], ENT_XML1) . '</Numero>';
+            $xml .= '<Serie>' . htmlspecialchars($rps['infRps']['serie'], ENT_XML1) . '</Serie>';
+            $xml .= '<Tipo>' . htmlspecialchars($rps['infRps']['tipo'], ENT_XML1) . '</Tipo>';
+            $xml .= '</IdentificacaoRps>';
+            $xml .= '<DataEmissao>' . htmlspecialchars($rps['infRps']['dataEmissao'], ENT_XML1) . '</DataEmissao>';
+            $xml .= '<Status>1</Status>';
+            $xml .= '</Rps>';
+            $xml .= '<Competencia>' . htmlspecialchars($rps['competencia'], ENT_XML1) . '</Competencia>';
+            $xml .= '<Servico>';
+            $xml .= '<Valores>';
+            $xml .= '<ValorServicos>' . htmlspecialchars($rps['valorServicos'], ENT_XML1) . '</ValorServicos>';
+            $xml .= '<ValorIss>' . htmlspecialchars($rps['valorIss'], ENT_XML1) . '</ValorIss>';
+            $xml .= '<Aliquota>' . htmlspecialchars($rps['aliquota'], ENT_XML1) . '</Aliquota>';
+            $xml .= '</Valores>';
+            $xml .= '<IssRetido>' . htmlspecialchars($rps['issRetido'], ENT_XML1) . '</IssRetido>';
+            $xml .= '<ItemListaServico>' . htmlspecialchars($rps['itemListaServico'], ENT_XML1) . '</ItemListaServico>';
+            $xml .= '<Discriminacao>' . htmlspecialchars($rps['discriminacao'], ENT_XML1) . '</Discriminacao>';
+            $xml .= '<CodigoMunicipio>' . htmlspecialchars($rps['codigoMunicipio'], ENT_XML1) . '</CodigoMunicipio>';
+            $xml .= '<ExigibilidadeISS>' . htmlspecialchars($rps['exigibilidadeISS'], ENT_XML1) . '</ExigibilidadeISS>';
+            $xml .= '</Servico>';
+            $xml .= '<Prestador>';
+            $xml .= '<CpfCnpj><Cnpj>' . htmlspecialchars($dados['cnpjPrestador'], ENT_XML1) . '</Cnpj></CpfCnpj>';
+            $xml .= '<InscricaoMunicipal>' . htmlspecialchars($dados['inscricaoMunicipal'], ENT_XML1) . '</InscricaoMunicipal>';
+            $xml .= '</Prestador>';
+            $xml .= '<Tomador>';
+            $xml .= '<IdentificacaoTomador>';
+            $xml .= '<CpfCnpj><Cnpj>' . htmlspecialchars($rps['tomador']['cpfCnpj'], ENT_XML1) . '</Cnpj></CpfCnpj>';
+            $xml .= '<InscricaoMunicipal>' . htmlspecialchars($rps['tomador']['inscricaoMunicipal'], ENT_XML1) . '</InscricaoMunicipal>';
+            $xml .= '</IdentificacaoTomador>';
+            $xml .= '<RazaoSocial>' . htmlspecialchars($rps['tomador']['razaoSocial'], ENT_XML1) . '</RazaoSocial>';
+            $xml .= '<Endereco>';
+            $xml .= '<Endereco>' . htmlspecialchars($rps['tomador']['endereco']['logradouro'], ENT_XML1) . '</Endereco>';
+            $xml .= '<Numero>' . htmlspecialchars($rps['tomador']['endereco']['numero'], ENT_XML1) . '</Numero>';
+            $xml .= '<Bairro>' . htmlspecialchars($rps['tomador']['endereco']['bairro'], ENT_XML1) . '</Bairro>';
+            $xml .= '<CodigoMunicipio>' . htmlspecialchars($rps['tomador']['endereco']['codigoMunicipio'], ENT_XML1) . '</CodigoMunicipio>';
+            $xml .= '<Uf>' . htmlspecialchars($rps['tomador']['endereco']['uf'], ENT_XML1) . '</Uf>';
+            $xml .= '<Cep>' . htmlspecialchars($rps['tomador']['endereco']['cep'], ENT_XML1) . '</Cep>';
+            $xml .= '</Endereco>';
+            $xml .= '<Contato>';
+            $xml .= '<Telefone>' . htmlspecialchars($rps['tomador']['telefone'], ENT_XML1) . '</Telefone>';
+            $xml .= '<Email>' . htmlspecialchars($rps['tomador']['email'], ENT_XML1) . '</Email>';
+            $xml .= '</Contato>';
+            $xml .= '</Tomador>';
+            $xml .= '<RegimeEspecialTributacao>' . htmlspecialchars($rps['regimeEspecialTributacao'], ENT_XML1) . '</RegimeEspecialTributacao>';
+            $xml .= '<OptanteSimplesNacional>' . htmlspecialchars($rps['optanteSimplesNacional'], ENT_XML1) . '</OptanteSimplesNacional>';
+            $xml .= '<IncentivoFiscal>' . htmlspecialchars($rps['incentivoFiscal'], ENT_XML1) . '</IncentivoFiscal>';
+            // Assinatura do RPS
+            if ($signatureRps) {
+                $xml .= $signatureRps;
+            }
+            $xml .= '</InfDeclaracaoPrestacaoServico>';
+            $xml .= '</Rps>';
         }
-        
-        return $xml->asXML();
+        $xml .= '</ListaRps>';
+        $xml .= '</LoteRps>';
+        // Assinatura do Lote
+        if ($signatureLote) {
+            $xml .= $signatureLote;
+        }
+        $xml .= '</EnviarLoteRpsEnvio>';
+        return $xml;
     }
     /**
      * Gera dados de exemplo para emissão de NFSe em Porto Seguro/BA

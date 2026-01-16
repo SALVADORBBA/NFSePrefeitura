@@ -1,202 +1,78 @@
 <?php
 
- 
-use NFSePrefeitura\PortoSeguro;
+use NFSePrefeitura\NFSe\PortoSeguro;
 
-class TesteController extends TPage
-{
-    public function __construct($param)
-    {
-        parent::__construct();
-    }
+// Caminho e senha do certificado digital
+$certPath = __DIR__ . '/certificado.pfx';
+$certPass = 'SENHA_DO_CERTIFICADO';
 
-    public function onShow($param = null)
-    {
-        try {
- 
-            $dados = [
-                'prestador' => [
-                    'cnpjPrestador'       => '49535940000174',
-                    'inscricao_municipal' => '173013001',
-                    'razao_social'        => 'QM PISCINAS LTDA',
-                    'endereco'            => 'Rua das Flores, 100',
-                    'bairro'              => 'Centro',
-                    'cep'                 => '48970000',
-                    'cidade'              => 'Porto Seguro',
-                    'uf'                  => 'BA',
-                    'email'               => 'contato@empresa.com.br',
-                ],
-                'tomador' => [
-                    'identificacao' => [
-                'CpfCnpj' => '57219214553'
+// Dados do lote e do RPS (exemplo, ajuste conforme sua necessidade)
+$dados = [
+    'lote_id' => 'Lote1',
+    'numeroLote' => '12345',
+    'cnpjPrestador' => '12345678000199',
+    'inscricaoMunicipal' => '123456',
+    'quantidadeRps' => 1,
+    'rps' => [
+        [
+            'inf_id' => 'Rps1',
+            'infRps' => [
+                'numero' => '1',
+                'serie' => 'A',
+                'tipo' => '1',
+                'dataEmissao' => '2024-06-01T10:00:00',
             ],
-                    'nome'     => 'Joao da Silva',
-                    'endereco' => 'Rua Teste, 123',
-                    'bairro'   => 'Centro',
-                    'cep'      => '48970000',
-                    'cidade'   => 'Porto Seguro',
-                    'uf'       => 'BA',
-                    'email'    => 'joao@teste.com.br',
+            'competencia' => '2024-06-01',
+            'valorServicos' => '100.00',
+            'valorIss' => '5.00',
+            'aliquota' => '0.05',
+            'issRetido' => '2',
+            'itemListaServico' => '1401',
+            'discriminacao' => 'Serviço de exemplo',
+            'codigoMunicipio' => '1234567',
+            'exigibilidadeISS' => '1',
+            'regimeEspecialTributacao' => '1',
+            'optanteSimplesNacional' => '1',
+            'incentivoFiscal' => '2',
+            'tomador' => [
+                'cpfCnpj' => '98765432000188',
+                'inscricaoMunicipal' => '654321',
+                'razaoSocial' => 'Empresa Tomadora',
+                'endereco' => [
+                    'logradouro' => 'Rua Exemplo',
+                    'numero' => '100',
+                    'bairro' => 'Centro',
+                    'codigoMunicipio' => '1234567',
+                    'uf' => 'SP',
+                    'cep' => '12345000',
                 ],
-                'servico' => [
-                    'descricao'      => 'Servico de teste',
-                    'aliquota'       => 0.02, // 2% em decimal
-                    'valor_servico'  => 100.00,
-                    'codigo_servico' => '101',
-                ],
-                'rps' => [
-                    'numero'       => '1',
-                    'serie'        => 'A',
-                    'tipo'         => 1,
-                    // alguns schemas exigem datetime ISO: date('Y-m-d\TH:i:s')
-                    'data_emissao' => date('Y-m-d\TH:i:s'), // Formato ISO 8601
-                ],
-            ];
- 
-            // =========================================
-            $certPath = realpath('app/certificado/1/6968c3b3791e6_695fa57fadf87_quimica.pfx');
-            $certPass = 'baby7902';
-
-            // Se seu provedor NÃO exige certificado no SOAP, pode comentar essas 2 linhas:
-            $this->assertFile($certPath, 'Certificado não encontrado');
-
-    
-            $params = PortoSeguro::enviarLoteRps([
-                'numeroLote' => '1',
-                'cnpjPrestador' => $dados['prestador']['cnpjPrestador'],
-                'inscricaoMunicipal' => $dados['prestador']['inscricao_municipal'],
-                'quantidadeRps' => 1,
-                'rps' => [[
-                    'infRps' => [
-                        'numero' => $dados['rps']['numero'],
-                        'serie'  => $dados['rps']['serie'],
-                        'tipo'   => $dados['rps']['tipo'],
-                        'dataEmissao' => $dados['rps']['data_emissao'],
-                    ],
-                    'discriminacao' => $dados['servico']['descricao'],
-                    'itemListaServico' => $dados['servico']['codigo_servico'],
-                    'tomador' => [
-                    'IdentificacaoTomador' => [
-                        'CpfCnpj' => $dados['tomador']['cpf_cnpj']
-                    ],
-                        'razaoSocial' => $dados['tomador']['nome'],
-                        'endereco' => [
-                            'logradouro' => $dados['tomador']['endereco'],
-                            'numero' => '',
-                            'bairro' => $dados['tomador']['bairro'],
-                            'codigoMunicipio' => '2925303',
-                            'uf' => $dados['tomador']['uf'],
-                            'cep' => $dados['tomador']['cep'],
-                        ]
-                    ]
-                ]]
-            ]);
-
-            // Convert SOAP response object to array if needed
-            $paramsArray = (array)$params;
-            $this->printBlock('nfseCabecMsg', $paramsArray['nfseCabecMsg'] ?? '');
-            $this->printBlock('nfseDadosMsg', $paramsArray['nfseDadosMsg'] ?? '');
-
-            // =========================
-            // 4) SOAP Client (WSDL remoto)
-            // =========================
-            // First try to download WSDL locally as fallback
-            $wsdlUrl = 'https://portoseguroba.gestaoiss.com.br/ws/nfse.asmx';
-            $localWsdlPath = sys_get_temp_dir().'/nfse_wsdl.xml';
-            
-            if (!file_exists($localWsdlPath) || (time() - filemtime($localWsdlPath) > 3600)) {
-                $context = stream_context_create(['http' => ['ignore_errors' => true]]);
-                $wsdlContent = file_get_contents($wsdlUrl, false, $context);
-                
-                if ($wsdlContent === false || !simplexml_load_string($wsdlContent)) {
-                    throw new Exception("Falha ao baixar WSDL: " . ($http_response_header[0] ?? 'Erro desconhecido'));
-                }
-                file_put_contents($localWsdlPath, $wsdlContent);
-            }
-            
-            $wsdl = $wsdlUrl; // Usar sempre o WSDL remoto validado
-
-            $options = [
-                'trace'        => 1,
-                'exceptions'   => true,
-                'cache_wsdl'   => WSDL_CACHE_NONE,
-                'soap_version' => SOAP_1_1,
-                
-                // Proxy settings if needed
-                'proxy_host' => '',
-                'proxy_port' => '',
-                
-                // Certificate authentication
-                'local_cert' => $certPath,
-                'passphrase' => $certPass,
-
-                // SSL/TLS configuration
-                'stream_context' => stream_context_create([
-                    'ssl' => [
-                        'verify_peer'      => false,
-                        'verify_peer_name' => false,
-                        'allow_self_signed' => true,
-                        'crypto_method' => STREAM_CRYPTO_METHOD_TLS_CLIENT,
-                    ],
-                    'http' => [
-                        'timeout' => 30,
-                        'user_agent' => 'PHP-SOAP'
-                    ]
-                ]),
-                
-                // Additional WSDL loading options
-                'connection_timeout' => 30,
-            ];
-
-            $client = new SoapClient(PortoSeguro::getWsdlWithValidation(), $options);
-
-            // Endpoint (nem sempre vem, mas quando vem ajuda)
-            $location = method_exists($client, '__getLocation') ? $client->__getLocation() : '';
-            if ($location) {
-                $this->printBlock('SOAP Location', $location);
-            }
- 
-            $method = 'GerarNfse';
-
-            $soapParams = [
-    'nfseCabecMsg' => PortoSeguro::generateNfseCabecMsg($dados['prestador']),
-    'nfseDadosMsg' => PortoSeguro::generateNfseDadosMsg($dados)
+                'telefone' => '11999999999',
+                'email' => 'contato@empresa.com',
+            ],
+        ],
+    ],
 ];
-$response = $client->__soapCall($method, [$soapParams]);
-            
-            // Convert SOAP response to array for proper handling
-            $responseArray = (array)$response;
-            $this->printBlock('Resposta do Webservice', print_r($responseArray, true));
-            $this->printBlock('SOAP Last Request', $client->__getLastRequest());
-            $this->printBlock('SOAP Last Response', $client->__getLastResponse());
 
-        } catch (SoapFault $sf) {
+// 1. Gerar o XML do lote RPS
+$xmlLote = PortoSeguro::gerarXmlLoteRps($dados);
 
-            $msg  = "Erro SOAP: " . $sf->getMessage();
-            $msg .= "\nFaultCode: " . ($sf->faultcode ?? '-');
-            $msg .= "\nFaultString: " . ($sf->faultstring ?? '-');
+// 2. Assinar o XML (exemplo: função fictícia assinarXml, ajuste conforme sua implementação)
+// $xmlLoteAssinado = assinarXml($xmlLote, $certPath, $certPass);
+// Se você já tem a assinatura separada para RPS e Lote, use os parâmetros do método
 
-            $this->printBlock('Falha SOAP', $msg);
+// 3. Enviar o XML assinado para o webservice (exemplo genérico)
+// $client = new SoapClient('URL_DO_WSDL', [
+//     'local_cert' => $certPath,
+//     'passphrase' => $certPass,
+//     'trace' => 1,
+//     'exceptions' => 1,
+// ]);
+// $params = [
+//     'nfseCabecMsg' => '...cabeçalho...',
+//     'nfseDadosMsg' => $xmlLoteAssinado,
+// ];
+// $response = $client->__soapCall('RecepcionarLoteRps', [$params]);
 
-        } catch (Exception $e) {
-
-            $this->printBlock('Erro geral', $e->getMessage());
-        }
-    }
-  
-
-    private function assertFile($path, $message)
-    {
-        if (!$path || !file_exists($path)) {
-            throw new Exception($message . ' => ' . ($path ?: '(path vazio)'));
-        }
-    }
-
-    private function printBlock(string $title, string $content): void
-    {
-        echo "<div style='margin:10px 0; padding:10px; border:1px solid #ddd; border-radius:6px;'>";
-        echo "<div style='font-weight:bold; margin-bottom:6px;'>" . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . "</div>";
-        echo "<pre style='white-space:pre-wrap; margin:0;'>" . htmlspecialchars($content, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "</pre>";
-        echo "</div>";
-    }
-}
+// Exibir o XML gerado para conferência
+header('Content-Type: text/xml; charset=utf-8');
+echo $xmlLote;
