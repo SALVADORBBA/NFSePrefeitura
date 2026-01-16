@@ -1,6 +1,6 @@
 <?php 
 
-namespace NFSePrefeitura;
+namespace NFSePrefeitura\NFSe;
 
 use NFePHP\Common\Certificate;
 use NFePHP\Common\Signer;
