@@ -11,6 +11,12 @@ class PortoSeguro
     /** @var string URL do WSDL do serviço */
     private static $wsdl = 'https://portoseguroba.gestaoiss.com.br/ws/nfse.asmx?WSDL';
 
+    /** @var string Caminho do certificado digital */
+    private $certPath;
+
+    /** @var string Senha do certificado digital */
+    private $certPassword;
+
     private static function getWsdlWithValidation()
     {
         $context = stream_context_create(['http' => ['ignore_errors' => true]]);
@@ -59,7 +65,13 @@ class PortoSeguro
         ];
     }
 
-    public static function enviarLoteRps(array $dados, array $opcoes = [])
+    public function __construct(string $certPath, string $certPassword)
+    {
+        $this->certPath = $certPath;
+        $this->certPassword = $certPassword;
+    }
+
+    public function enviarLoteRps(array $dados, array $opcoes = [])
     {
         try {
             $defaultOptions = [
@@ -70,7 +82,9 @@ class PortoSeguro
                     'ssl' => [
                         'verify_peer' => false,
                         'verify_peer_name' => false,
-                        'allow_self_signed' => true
+                        'allow_self_signed' => true,
+                        'pfx' => file_get_contents($this->certPath),
+                        'passphrase' => $this->certPassword
                     ]
                 ])
             ];
@@ -111,6 +125,7 @@ class PortoSeguro
         
         $loteRps->addChild('NumeroLote', $dados['numeroLote']);
         
+        $cpfCnpj = $loteRps->addChild('CpfCnpj');
         $cpfCnpj = $loteRps->addChild('CpfCnpj');
         $cpfCnpj->addChild('Cnpj', $dados['cnpjPrestador']);
         
@@ -166,6 +181,7 @@ class PortoSeguro
             $tomador = $infRps->addChild('Tomador');
             $identificacaoTomador = $tomador->addChild('IdentificacaoTomador');
             $tomadorCpfCnpj = $identificacaoTomador->addChild('CpfCnpj');
+            $tomadorCpfCnpj->addChild('Cnpj', $rps['tomador']['cpfCnpj']);
             // Dados completos do tomador
             $tomador->addChild('RazaoSocial', $rps['tomador']['razaoSocial']);
             $enderecoTomador = $tomador->addChild('Endereco');
@@ -178,6 +194,7 @@ class PortoSeguro
             $contatoTomador = $tomador->addChild('Contato');
             $contatoTomador->addChild('Telefone', $rps['tomador']['telefone'] ?? '');
             $contatoTomador->addChild('Email', $rps['tomador']['email'] ?? '');
+            $tomador->addChild('RazaoSocial', $rps['tomador']['razaoSocial']);
             
             // Removendo bloco duplicado de endereço/contato
             
@@ -208,7 +225,7 @@ class PortoSeguro
                 'competencia' => date('Y-m-01'),
                 'itemListaServico' => '0710',
                 'codigoTribMunicipio' => '0710',
-                'discriminacao' => 'Serviço',
+                'discriminacao' => 'ServiCo',
                 'codigoMunicipio' => '2925303',
                 'tomador' => [
                     'cpfCnpj' => '93102208568',

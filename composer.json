@@ -1,0 +1,24 @@
+{
+    "name": "nfseprefeitura/nfse",
+    "description": "Biblioteca ABRASF NFS-e para Porto Seguro/BA",
+    "type": "library",
+    "require": {
+        "php": ">=7.4",
+        "ext-soap": "*",
+        "guzzlehttp/guzzle": "^7.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "DevelopApi\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Sua Empresa",
+            "email": "suporte@empresa.com.br"
+        }
+    ],
+    "config": {
+        "platform-check": false
+    }
+}
