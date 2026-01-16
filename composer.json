@@ -9,7 +9,7 @@
     },
     "autoload": {
         "psr-4": {
-            "DevelopApi\\": "src/"
+            "NFSePrefeitura\\NFSe\\": "src/"
         }
     },
     "authors": [
