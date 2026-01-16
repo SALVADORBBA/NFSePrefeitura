@@ -209,7 +209,7 @@ class PortoSeguro
                     'numero' => '1',
                     'serie'  => '1',
                     'tipo'   => '1',
-                    'dataEmissao' => date('Y-m-d\TH:i:s'),
+                    'dataEmissao' => date('Y-m-d\TH:i:sP'),
                 ],
                 'competencia' => date('Y-m-01'),
                 'itemListaServico' => '0710',
