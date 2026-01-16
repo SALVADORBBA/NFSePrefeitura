@@ -1,78 +1,93 @@
 <?php
 
 use NFSePrefeitura\NFSe\PortoSeguro;
+class TesteController extends TPage
+{
+    public function __construct($param)
+    {
+        parent::__construct();
+    }
 
-// Caminho e senha do certificado digital
-$certPath = __DIR__ . '/certificado.pfx';
-$certPass = 'SENHA_DO_CERTIFICADO';
+    public function onShow($param = null)
+    {
+        // Caminho e senha do certificado digital
+        $certPath = 'app/certificado/1/6968c3b3791e6_695fa57fadf87_quimica.pfx';
+        $certPass = 'baby7902';
 
-// Dados do lote e do RPS (exemplo, ajuste conforme sua necessidade)
-$dados = [
-    'lote_id' => 'Lote1',
-    'numeroLote' => '12345',
-    'cnpjPrestador' => '12345678000199',
-    'inscricaoMunicipal' => '123456',
-    'quantidadeRps' => 1,
-    'rps' => [
-        [
-            'inf_id' => 'Rps1',
-            'infRps' => [
-                'numero' => '1',
-                'serie' => 'A',
-                'tipo' => '1',
-                'dataEmissao' => '2024-06-01T10:00:00',
-            ],
-            'competencia' => '2024-06-01',
-            'valorServicos' => '100.00',
-            'valorIss' => '5.00',
-            'aliquota' => '0.05',
-            'issRetido' => '2',
-            'itemListaServico' => '1401',
-            'discriminacao' => 'Serviço de exemplo',
-            'codigoMunicipio' => '1234567',
-            'exigibilidadeISS' => '1',
-            'regimeEspecialTributacao' => '1',
-            'optanteSimplesNacional' => '1',
-            'incentivoFiscal' => '2',
-            'tomador' => [
-                'cpfCnpj' => '98765432000188',
-                'inscricaoMunicipal' => '654321',
-                'razaoSocial' => 'Empresa Tomadora',
-                'endereco' => [
-                    'logradouro' => 'Rua Exemplo',
-                    'numero' => '100',
-                    'bairro' => 'Centro',
+        $dados = [
+            'lote_id' => 'Lote1',
+            'numeroLote' => '12345',
+            'cnpjPrestador' => '12345678000199',
+            'inscricaoMunicipal' => '123456',
+            'quantidadeRps' => 1,
+            'rps' => [
+                [
+                    'inf_id' => 'Rps1',
+                    'infRps' => [
+                        'numero' => '1',
+                        'serie' => 'A',
+                        'tipo' => '1',
+                        'dataEmissao' => '2024-06-01T10:00:00',
+                    ],
+                    'competencia' => '2024-06-01',
+                    'valorServicos' => '100.00',
+                    'valorIss' => '5.00',
+                    'aliquota' => '0.05',
+                    'issRetido' => '2',
+                    'itemListaServico' => '1401',
+                    'discriminacao' => 'Serviço de exemplo',
                     'codigoMunicipio' => '1234567',
-                    'uf' => 'SP',
-                    'cep' => '12345000',
+                    'exigibilidadeISS' => '1',
+                    'regimeEspecialTributacao' => '1',
+                    'optanteSimplesNacional' => '1',
+                    'incentivoFiscal' => '2',
+                    'tomador' => [
+                        'cpfCnpj' => '98765432000188',
+                        'inscricaoMunicipal' => '654321',
+                        'razaoSocial' => 'Empresa Tomadora',
+                        'endereco' => [
+                            'logradouro' => 'Rua Exemplo',
+                            'numero' => '100',
+                            'bairro' => 'Centro',
+                            'codigoMunicipio' => '1234567',
+                            'uf' => 'SP',
+                            'cep' => '12345000',
+                        ],
+                        'telefone' => '11999999999',
+                        'email' => 'contato@empresa.com',
+                    ],
                 ],
-                'telefone' => '11999999999',
-                'email' => 'contato@empresa.com',
             ],
-        ],
-    ],
-];
+        ];
 
-// 1. Gerar o XML do lote RPS
-$xmlLote = PortoSeguro::gerarXmlLoteRps($dados);
+        // 1. Gerar o XML do lote RPS
+        $xmlLote = PortoSeguro::gerarXmlLoteRps($dados);
+        self::salvar('xmlLote.xml', $xmlLote);
 
-// 2. Assinar o XML (exemplo: função fictícia assinarXml, ajuste conforme sua implementação)
-// $xmlLoteAssinado = assinarXml($xmlLote, $certPath, $certPass);
-// Se você já tem a assinatura separada para RPS e Lote, use os parâmetros do método
+        // 2. Salvar XML em arquivo temporário para assinatura externa
+        $tempXmlPath = __DIR__ . '/temp_lote.xml';
+        file_put_contents($tempXmlPath, $xmlLote);
 
-// 3. Enviar o XML assinado para o webservice (exemplo genérico)
-// $client = new SoapClient('URL_DO_WSDL', [
-//     'local_cert' => $certPath,
-//     'passphrase' => $certPass,
-//     'trace' => 1,
-//     'exceptions' => 1,
-// ]);
-// $params = [
-//     'nfseCabecMsg' => '...cabeçalho...',
-//     'nfseDadosMsg' => $xmlLoteAssinado,
-// ];
-// $response = $client->__soapCall('RecepcionarLoteRps', [$params]);
+        // 3. Chamar assinador externo (ajuste o caminho conforme seu ambiente)
+        $assinadorPath = 'C:\AssinadorXML&ComunicacaoWS\AssinadorDeXML.exe'; // ajuste se necessário
+        $outputXmlPath = __DIR__ . '/temp_lote_assinado.xml';
+        $cmd = '"' . $assinadorPath . '" "' . $tempXmlPath . '" "' . $certPath . '" "' . $certPass . '" "' . $outputXmlPath . '"';
+        exec($cmd, $output, $retorno);
 
-// Exibir o XML gerado para conferência
-header('Content-Type: text/xml; charset=utf-8');
-echo $xmlLote;
+        // 4. Ler XML assinado e salvar
+        if ($retorno === 0 && file_exists($outputXmlPath)) {
+            $xmlLoteAssinado = file_get_contents($outputXmlPath);
+            self::salvar('xmlLoteAssinado.xml', $xmlLoteAssinado);
+            header('Content-Type: text/xml; charset=utf-8');
+            echo $xmlLoteAssinado;
+        } else {
+            echo 'Erro ao assinar o XML!';
+        }
+    }
+    private static function salvar(string $nome, string $conteudo): void
+    {
+        $dir = 'app/xml_nfse/';
+        if (!is_dir($dir)) mkdir($dir, 0777, true);
+        file_put_contents($dir . date('Ymd_His_') . $nome, $conteudo);
+    }
+}
