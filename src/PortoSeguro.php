@@ -209,12 +209,12 @@ class PortoSeguro
                     'numero' => '1',
                     'serie'  => '1',
                     'tipo'   => '1',
-                    'dataEmissao' => date('Y-m-d\TH:i:sP'),
+                    'dataEmissao' => date('Y-m-d\TH:i:sP'), // <-- Ajuste para incluir timezone
                 ],
                 'competencia' => date('Y-m-01'),
                 'itemListaServico' => '0710',
                 'codigoTribMunicipio' => '0710',
-                'discriminacao' => 'ServiCo',
+                'discriminacao' => 'Serviço',
                 'codigoMunicipio' => '2925303',
                 'tomador' => [
                     'cpfCnpj' => '93102208568',
