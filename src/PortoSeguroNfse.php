@@ -1,5 +1,5 @@
 <?php
-namespace DevelopApi;
+namespace NFSePrefeitura\NFSe;
 
 /**
  * Classe para integração com o sistema de NFSe de Porto Seguro/BA

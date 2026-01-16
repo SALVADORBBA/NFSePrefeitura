@@ -1,6 +1,7 @@
 <?php
 
-use DevelopApi\PortoSeguro;
+ 
+use NFSePrefeitura\PortoSeguro;
 
 class TesteController extends TPage
 {
