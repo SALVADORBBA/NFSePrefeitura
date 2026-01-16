@@ -7,15 +7,15 @@
         "ext-soap": "*",
         "guzzlehttp/guzzle": "^7.0"
     },
-    "autoload": {
-        "psr-4": {
-            "NFSePrefeitura\\NFSe\\": "src/"
-        }
-    },
+  "autoload": {
+    "psr-4": {
+        "NFSePrefeitura\\NFSe\\": "src/"
+    }
+},
     "authors": [
         {
-            "name": "Sua Empresa",
-            "email": "suporte@empresa.com.br"
+            "name": "Developér API",
+            "email": "salvadorbba@gmail.com"
         }
     ],
     "config": {

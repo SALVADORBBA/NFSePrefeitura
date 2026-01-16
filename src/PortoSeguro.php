@@ -1,258 +1,245 @@
 <?php
-namespace DevelopApi;
+namespace NFSePrefeitura\NFSe;
 
-class PortoSeguroNfse
+/**
+ * Classe para integração com o sistema de NFSe de Porto Seguro/BA
+ * @version 2.0
+ * @package DevelopApi
+ */
+class PortoSeguro
 {
-    public const NS = 'http://www.abrasf.org.br/nfse.xsd';
-    public const VERSAO = '2.02';
+    /** @var string URL do WSDL do serviço */
+    private static $wsdl = 'https://portoseguroba.gestaoiss.com.br/ws/nfse.asmx?WSDL';
 
-    private array $dados;
-    private string $xml = '';
+    /** @var string Caminho do certificado digital */
+    private $certPath;
 
-    public function __construct(array $dados)
+    /** @var string Senha do certificado digital */
+    private $certPassword;
+
+    private static function getWsdlWithValidation()
     {
-        $this->dados = $dados;
-    }
+        $context = stream_context_create(['http' => ['ignore_errors' => true]]);
+        $wsdlContent = file_get_contents(self::$wsdl, false, $context);
 
-    /* =========================================================
-     * Helpers
-     * ========================================================= */
-
-    private function xmlValue($v): string
-    {
-        if ($v === null) {
-            $v = '';
-        } elseif (is_array($v)) {
-            $v = implode(' ', array_map(function ($x) {
-                if (is_scalar($x)) return (string)$x;
-                return json_encode($x, JSON_UNESCAPED_UNICODE);
-            }, $v));
-        } elseif (is_object($v)) {
-            $v = method_exists($v, '__toString')
-                ? (string)$v
-                : json_encode($v, JSON_UNESCAPED_UNICODE);
-        } elseif (is_bool($v)) {
-            $v = $v ? '1' : '0';
-        } else {
-            $v = (string)$v;
+        if ($wsdlContent === false || !simplexml_load_string($wsdlContent)) {
+            throw new \Exception("Falha ao validar WSDL: " . ($http_response_header[0] ?? 'Erro desconhecido'));
         }
 
-        return htmlspecialchars($v, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+        return self::$wsdl;
     }
-
-    private function money($v): string
-    {
-        if ($v === null || $v === '') return '0.00';
-
-        if (is_array($v) || is_object($v)) {
-            $v = $this->xmlValue($v);
-        }
-
-        $s = (string)$v;
-        $s = str_replace(['.', ' '], ['', ''], $s);
-        $s = str_replace(',', '.', $s);
-
-        $n = is_numeric($s) ? (float)$s : 0.0;
-        return number_format($n, 2, '.', '');
-    }
-
-    private function date($v): string
-    {
-        $s = is_scalar($v) ? trim((string)$v) : '';
-
-        // aceita ISO completo
-        if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/', $s)) {
-            return $this->xmlValue($s);
-        }
-
-        // "YYYY-MM-DD HH:MM:SS" => "YYYY-MM-DDTHH:MM:SS"
-        if (preg_match('/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}$/', $s)) {
-            return $this->xmlValue(str_replace(' ', 'T', $s));
-        }
-
-        // somente data
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $s)) {
-            return $this->xmlValue($s);
-        }
-
-        return $this->xmlValue($s);
-    }
-
-    private function cabecalho(): string
-    {
-        return '<cabecalho xmlns="' . self::NS . '" versao="' . self::VERSAO . '">'
-             .   '<versaoDados>' . self::VERSAO . '</versaoDados>'
-             . '</cabecalho>';
-    }
-
-    /* =========================================================
-     * 1) XML LOTE: EnviarLoteRpsEnvio
-     * (use com RecepcionarLoteRps / RecepcionarLoteRpsSincrono)
-     * ========================================================= */
-
-    public function montarXmlLote(): string
-    {
-        $rps       = $this->dados['rps']       ?? [];
-        $prestador = $this->dados['prestador'] ?? [];
-        $servico   = $this->dados['servico']   ?? [];
-        $tomador   = $this->dados['tomador']   ?? [];
-
-        $xml =
-         
-            '<?xml version="1.0" encoding="UTF-8"?>'
-            . '<EnviarLoteRpsEnvio xmlns="' . self::NS . '">'
-            . '  <LoteRps>'
-            . '    <NumeroLote>' . $this->xmlValue($rps['numero'] ?? '') . '</NumeroLote>'
-            . '    <Cnpj>' . $this->xmlValue($prestador['cnpjPrestador'] ?? '') . '</Cnpj>'
-            . '    <InscricaoMunicipal>' . $this->xmlValue($prestador['inscricao_municipal'] ?? '') . '</InscricaoMunicipal>'
-            . '    <QuantidadeRps>1</QuantidadeRps>'
-            . '    <ListaRps>'
-            . '      <Rps>'
-            . '        <InfRps>'
-            . '          <IdentificacaoRps>'
-            . '            <Numero>' . $this->xmlValue($rps['numero'] ?? '') . '</Numero>'
-            . '            <Serie>'  . $this->xmlValue($rps['serie'] ?? '')  . '</Serie>'
-            . '            <Tipo>'   . $this->xmlValue($rps['tipo'] ?? '')   . '</Tipo>'
-            . '          </IdentificacaoRps>'
-            . '          <DataEmissao>' . $this->date($rps['data_emissao'] ?? '') . '</DataEmissao>'
-            . '          <Servico>'
-            . '            <Descricao>'     . $this->xmlValue($servico['descricao'] ?? '') . '</Descricao>'
-            . '            <Aliquota>'      . $this->money($servico['aliquota'] ?? '0') . '</Aliquota>'
-            . '            <ValorServico>'  . $this->money($servico['valor_servico'] ?? '0') . '</ValorServico>'
-            . '            <CodigoServico>' . $this->xmlValue($servico['codigo_servico'] ?? '') . '</CodigoServico>'
-            . '          </Servico>'
-            . '          <Tomador>'
-            . '            <CpfCnpj>' . $this->xmlValue($tomador['cpf_cnpj'] ?? '') . '</CpfCnpj>'
-            . '            <Nome>'    . $this->xmlValue($tomador['nome'] ?? '') . '</Nome>'
-            . '            <Endereco>' . $this->xmlValue($tomador['endereco'] ?? '') . '</Endereco>'
-            . '            <Bairro>'  . $this->xmlValue($tomador['bairro'] ?? '') . '</Bairro>'
-            . '            <Cep>'     . $this->xmlValue($tomador['cep'] ?? '') . '</Cep>'
-            . '            <Cidade>'  . $this->xmlValue($tomador['cidade'] ?? '') . '</Cidade>'
-            . '            <Uf>'      . $this->xmlValue($tomador['uf'] ?? '') . '</Uf>'
-            . '            <Email>'   . $this->xmlValue($tomador['email'] ?? '') . '</Email>'
-            . '          </Tomador>'
-            . '        </InfRps>'
-            . '      </Rps>'
-            . '    </ListaRps>'
-            . '  </LoteRps>'
-            . '</EnviarLoteRpsEnvio>';
-
-        $this->xml = $xml;
-        return $this->xml;
-    }
-
-    public function paramsLote(): array
+    
+    /**
+     * Envia lote RPS para emissão de NFSe
+     * @param array $dados Dados da NFSe conforme padrão ABRASF
+     * @param array $opcoes Opções adicionais para o SOAP client
+     * @return \stdClass Resposta do webservice
+     * @throws \Exception Em caso de erro na comunicação
+     * 
+     * @example
+     * $dados = [
+     *     'numeroLote' => '1',
+     *     'cnpjPrestador' => '12345678901234',
+     *     'inscricaoMunicipal' => '123456',
+     *     'quantidadeRps' => 1,
+     *     'rps' => [[...]]
+     * ];
+     * $response = PortoSeguro::enviarLoteRps($dados);
+     */
+    public static function generateNfseCabecMsg(array $prestador)
     {
         return [
-            'nfseCabecMsg' => $this->cabecalho(),
-            'nfseDadosMsg' => $this->montarXmlLote(),
+            'versao' => '1.00',
+            'cnpjPrestador' => $prestador['cnpjPrestador'],
+            'inscricaoMunicipal' => $prestador['inscricao_municipal']
         ];
     }
 
-    /* =========================================================
-     * 2) XML GERAR NFSE: GerarNfseEnvio
-     * (use com GerarNfse)
-     * ========================================================= */
-
-    public function montarXmlGerarNfse(): string
-    {
-        $rps       = $this->dados['rps']       ?? [];
-        $prestador = $this->dados['prestador'] ?? [];
-        $servico   = $this->dados['servico']   ?? [];
-        $tomador   = $this->dados['tomador']   ?? [];
-
-        // ATENÇÃO:
-        // Aqui é um "esqueleto mínimo". O padrão ABRASF GerarNfseEnvio normalmente exige
-        // grupos mais completos (IdentificacaoPrestador, Tomador com IdentificacaoTomador, Endereco, etc).
-        // Se o provedor exigir mais campos, você vai precisar expandir.
-
-        $xml =
-            '<?xml version="1.0" encoding="UTF-8"?>'
-            . '<GerarNfseEnvio xmlns="' . self::NS . '">'
-            . '  <Rps>'
-            . '    <InfRps>'
-            . '      <IdentificacaoRps>'
-            . '        <Numero>' . $this->xmlValue($rps['numero'] ?? '') . '</Numero>'
-            . '        <Serie>' . $this->xmlValue($rps['serie'] ?? '') . '</Serie>'
-            . '        <Tipo>' . $this->xmlValue($rps['tipo'] ?? '') . '</Tipo>'
-            . '      </IdentificacaoRps>'
-            . '      <DataEmissao>' . $this->date($rps['data_emissao'] ?? '') . '</DataEmissao>'
-            . '      <Prestador>'
-            . '        <Cnpj>' . $this->xmlValue($prestador['cnpjPrestador'] ?? '') . '</Cnpj>'
-            . '        <InscricaoMunicipal>' . $this->xmlValue($prestador['inscricao_municipal'] ?? '') . '</InscricaoMunicipal>'
-            . '      </Prestador>'
-            . '      <Servico>'
-            . '        <Descricao>' . $this->xmlValue($servico['descricao'] ?? '') . '</Descricao>'
-            . '        <Aliquota>' . $this->money($servico['aliquota'] ?? '0') . '</Aliquota>'
-            . '        <ValorServico>' . $this->money($servico['valor_servico'] ?? '0') . '</ValorServico>'
-            . '        <CodigoServico>' . $this->xmlValue($servico['codigo_servico'] ?? '') . '</CodigoServico>'
-            . '      </Servico>'
-            . '      <Tomador>'
-            . '        <CpfCnpj>' . $this->xmlValue($tomador['cpf_cnpj'] ?? '') . '</CpfCnpj>'
-            . '        <Nome>' . $this->xmlValue($tomador['nome'] ?? '') . '</Nome>'
-            . '        <Endereco>' . $this->xmlValue($tomador['endereco'] ?? '') . '</Endereco>'
-            . '        <Bairro>' . $this->xmlValue($tomador['bairro'] ?? '') . '</Bairro>'
-            . '        <Cep>' . $this->xmlValue($tomador['cep'] ?? '') . '</Cep>'
-            . '        <Cidade>' . $this->xmlValue($tomador['cidade'] ?? '') . '</Cidade>'
-            . '        <Uf>' . $this->xmlValue($tomador['uf'] ?? '') . '</Uf>'
-            . '        <Email>' . $this->xmlValue($tomador['email'] ?? '') . '</Email>'
-            . '      </Tomador>'
-            . '    </InfRps>'
-            . '  </Rps>'
-            . '</GerarNfseEnvio>';
-
-        $this->xml = $xml;
-        return $this->xml;
-    }
-
-    public function paramsGerarNfse(): array
+    public static function generateNfseDadosMsg(array $dados)
     {
         return [
-            'nfseCabecMsg' => $this->cabecalho(),
-            'nfseDadosMsg' => $this->montarXmlGerarNfse(),
+            'Rps' => $dados['rps'],
+            'Prestador' => $dados['prestador'],
+            'Tomador' => $dados['tomador'],
+            'Servico' => $dados['servico']
         ];
     }
 
-    /* =========================================================
-     * Envio genérico
-     * ========================================================= */
-
-    public function enviarSoap(string $wsdl, string $method, array $params, string $certPath, string $certPass): array
+    public function __construct(string $certPath, string $certPassword)
     {
-        $options = [
-            'local_cert'         => $certPath,
-            'passphrase'         => $certPass,
-            'trace'              => 1,
-            'exceptions'         => true,
-            'cache_wsdl'         => WSDL_CACHE_NONE,
-            'soap_version'       => SOAP_1_1,
-            'connection_timeout' => 120,
-        ];
+        $this->certPath = $certPath;
+        $this->certPassword = $certPassword;
+    }
 
-        $client = new \SoapClient($wsdl, $options);
-
+    public function enviarLoteRps(array $dados, array $opcoes = [])
+    {
         try {
-            $response = $client->__soapCall($method, [$params]);
-            return [
-                'success'      => true,
-                'response'     => $response,
-                'last_request' => $client->__getLastRequest(),
-                'last_response'=> $client->__getLastResponse(),
+            $defaultOptions = [
+                'soap_version' => SOAP_1_2,
+                'exceptions' => true,
+                'trace' => 1,
+                'stream_context' => stream_context_create([
+                    'ssl' => [
+                        'verify_peer' => false,
+                        'verify_peer_name' => false,
+                        'allow_self_signed' => true,
+                        'pfx' => file_get_contents($this->certPath),
+                        'passphrase' => $this->certPassword
+                    ]
+                ])
             ];
+            
+            $wsdlUrl = self::getWsdlWithValidation();
+            $client = new \SoapClient(
+                $wsdlUrl,
+                array_merge($defaultOptions, $opcoes)
+            );
+            
+            $cabecMsg = self::generateNfseCabecMsg($dados);
+            $dadosMsg = self::generateNfseDadosMsg($dados);
+            
+            $response = $client->__soapCall('GerarNfse', [
+                'nfseCabecMsg' => $cabecMsg,
+                'nfseDadosMsg' => $dadosMsg
+            ]);
+            
+            return $response;
         } catch (\SoapFault $e) {
-            return [
-                'success'      => false,
-                'error'        => $e->getMessage(),
-                'faultcode'    => $e->faultcode ?? null,
-                'faultstring'  => $e->faultstring ?? null,
-                'last_request' => $client->__getLastRequest(),
-                'last_response'=> $client->__getLastResponse(),
-            ];
+            throw new \Exception("Erro SOAP: " . $e->getMessage(), $e->getCode(), $e);
         }
     }
-
-    public function getXml(): string
+    
+    /**
+     * Gera XML para envio de lote RPS
+     * @param array $dados
+     * @return string
+     */
+    private static function gerarXmlLoteRps($dados)
     {
-        return $this->xml;
+        $xml = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><EnviarLoteRpsEnvio xmlns="http://www.abrasf.org.br/nfse.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.abrasf.org.br/nfse.xsd EnviarLoteRpsEnvio.xsd"></EnviarLoteRpsEnvio>');
+
+        // Adiciona elemento LoteRps com atributos obrigatórios
+        $loteRps = $xml->addChild('LoteRps');
+        $loteRps->addAttribute('Id', 'Lote_' . $dados['numeroLote']);
+        $loteRps->addAttribute('versao', '2.02');
+        
+        $loteRps->addChild('NumeroLote', $dados['numeroLote']);
+        
+        $cpfCnpj = $loteRps->addChild('CpfCnpj');
+        $cpfCnpj = $loteRps->addChild('CpfCnpj');
+        $cpfCnpj->addChild('Cnpj', $dados['cnpjPrestador']);
+        
+        $loteRps->addChild('InscricaoMunicipal', $dados['inscricaoMunicipal']);
+        $loteRps->addChild('QuantidadeRps', $dados['quantidadeRps']);
+        
+        $listaRps = $loteRps->addChild('ListaRps');
+        
+        foreach ($dados['rps'] as $index => $rps) {
+            $rpsNode = $listaRps->addChild('Rps');
+            
+            $infRps = $rpsNode->addChild('InfDeclaracaoPrestacaoServico');
+            $infRps->addAttribute('Id', 'loteRPS_' . $index);
+            
+            $rpsChild = $infRps->addChild('Rps');
+            
+            $identificacao = $rpsChild->addChild('IdentificacaoRps');
+            $identificacao->addChild('Numero', $rps['infRps']['numero']);
+            $identificacao->addChild('Serie', $rps['infRps']['serie']);
+            $identificacao->addChild('Tipo', $rps['infRps']['tipo']);
+            
+            $rpsChild->addChild('DataEmissao', $rps['infRps']['dataEmissao']);
+            $rpsChild->addChild('Status', '1');
+            
+            $infRps->addChild('Competencia', $rps['competencia']);
+            
+            $servico = $infRps->addChild('Servico');
+            
+            $valores = $servico->addChild('Valores');
+            $valores->addChild('ValorServicos', $rps['valorServicos'] ?? '0.00');
+            
+            $servico->addChild('IssRetido', $rps['issRetido'] ?? '2');
+            $servico->addChild('ItemListaServico', $rps['itemListaServico']);
+            $servico->addChild('CodigoCnae', $rps['codigoCnae'] ?? '');
+            $servico->addChild('CodigoTributacaoMunicipio', $rps['codigoTributacaoMunicipio']);
+            $servico->addChild('Discriminacao', $rps['discriminacao']);
+            $servico->addChild('CodigoMunicipio', $rps['codigoMunicipio']);
+            $servico->addChild('ExigibilidadeISS', $rps['exigibilidadeISS'] ?? '1');
+            $servico->addChild('MunicipioIncidencia', $rps['codigoMunicipio']);
+            
+            $prestador = $infRps->addChild('Prestador');
+            $prestadorCpfCnpj = $prestador->addChild('CpfCnpj');
+            // Prestador com estrutura completa
+            $prestador->addChild('RazaoSocial', $dados['prestador']['razao_social']);
+            $enderecoPrestador = $prestador->addChild('Endereco');
+            $enderecoPrestador->addChild('Logradouro', $dados['prestador']['logradouro']);
+            $enderecoPrestador->addChild('Numero', $dados['prestador']['numero']);
+            $enderecoPrestador->addChild('Bairro', $dados['prestador']['bairro']);
+            $enderecoPrestador->addChild('CodigoMunicipio', $dados['prestador']['codigo_municipio']);
+            $enderecoPrestador->addChild('UF', $dados['prestador']['uf']);
+            $enderecoPrestador->addChild('CEP', $dados['prestador']['cep']);
+            
+            $tomador = $infRps->addChild('Tomador');
+            $identificacaoTomador = $tomador->addChild('IdentificacaoTomador');
+            $tomadorCpfCnpj = $identificacaoTomador->addChild('CpfCnpj');
+            $tomadorCpfCnpj->addChild('Cnpj', $rps['tomador']['cpfCnpj']);
+            // Dados completos do tomador
+            $tomador->addChild('RazaoSocial', $rps['tomador']['razaoSocial']);
+            $enderecoTomador = $tomador->addChild('Endereco');
+            $enderecoTomador->addChild('Logradouro', $rps['tomador']['endereco']['logradouro']);
+            $enderecoTomador->addChild('Numero', $rps['tomador']['endereco']['numero']);
+            $enderecoTomador->addChild('Bairro', $rps['tomador']['endereco']['bairro']);
+            $enderecoTomador->addChild('CodigoMunicipio', $rps['tomador']['endereco']['codigoMunicipio']);
+            $enderecoTomador->addChild('UF', $rps['tomador']['endereco']['uf']);
+            $enderecoTomador->addChild('CEP', $rps['tomador']['endereco']['cep']);
+            $contatoTomador = $tomador->addChild('Contato');
+            $contatoTomador->addChild('Telefone', $rps['tomador']['telefone'] ?? '');
+            $contatoTomador->addChild('Email', $rps['tomador']['email'] ?? '');
+            $tomador->addChild('RazaoSocial', $rps['tomador']['razaoSocial']);
+            
+            // Removendo bloco duplicado de endereço/contato
+            
+            $infRps->addChild('OptanteSimplesNacional', $rps['optanteSimplesNacional'] ?? '2');
+            $infRps->addChild('IncentivoFiscal', $rps['incentivoFiscal'] ?? '2');
+        }
+        
+        return $xml->asXML();
     }
-}
+    /**
+     * Gera dados de exemplo para emissão de NFSe em Porto Seguro/BA
+     * @return array
+     */
+    public static function gerarDadosExemplo()
+    {
+        return [
+            'numeroLote' => '1',
+            'cnpjPrestador' => '49535940000174',
+            'inscricaoMunicipal' => '173013001',
+            'quantidadeRps' => 1,
+            'rps' => [[
+                'infRps' => [
+                    'numero' => '1',
+                    'serie'  => '1',
+                    'tipo'   => '1',
+                    'dataEmissao' => date('Y-m-d\TH:i:s'),
+                ],
+                'competencia' => date('Y-m-01'),
+                'itemListaServico' => '0710',
+                'codigoTribMunicipio' => '0710',
+                'discriminacao' => 'ServiCo',
+                'codigoMunicipio' => '2925303',
+                'tomador' => [
+                    'cpfCnpj' => '93102208568',
+                    'razaoSocial' => 'MARCIONILIO ALEX CURVELO SANTOS',
+                    'endereco' => [
+                        'logradouro' => 'Rua dos Beija Flores',
+                        'numero' => '30',
+                        'bairro' => 'MIRANTE',
+                        'codigoMunicipio' => '2925303',
+                        'uf' => 'BA',
+                        'cep' => '45810000',
+                    ],
+                ],
+            ]]
+        ];
+    }
+    }
