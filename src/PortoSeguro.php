@@ -266,6 +266,12 @@ class PortoSeguro
             }
 
         $x .= $this->tagIf('OptanteSimplesNacional', $optanteSimplesNacional);
+
+$inc = $this->normalizeIncentivoFiscal($incentivoFiscal);
+if ($inc !== '') {
+    $x .= '<IncentivoFiscal>' . $this->xmlEscape($inc) . '</IncentivoFiscal>';
+}
+
         $x .= $this->tagIf('IncentivoFiscal', $incentivoFiscal);
 
         $x .= '</InfDeclaracaoPrestacaoServico>';
@@ -414,6 +420,26 @@ class PortoSeguro
 
     // Se estiver fora do range, melhor não mandar (evita erro de schema)
     return '';
+}
+private function normalizeIncentivoFiscal($v): string
+{
+    $vv = trim((string)$v);
+
+    // 0 ou vazio => NÃO INFORMAR (ou você pode preferir retornar '2')
+    if ($vv === '' || $vv === '0') {
+        return '2'; // padrão: Não
+        // ou: return ''; // se preferir omitir a tag
+    }
+
+    $vv = preg_replace('/\D+/', '', $vv);
+
+    // Só aceita 1 ou 2
+    if ($vv === '1' || $vv === '2') {
+        return $vv;
+    }
+
+    // fallback: melhor padronizar para "Não"
+    return '2';
 }
 
 }
