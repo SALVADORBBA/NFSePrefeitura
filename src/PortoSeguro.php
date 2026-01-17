@@ -109,10 +109,10 @@ class PortoSeguro
             $xml .= '<Aliquota>' . number_format($rps['aliquota'], 4, '.', '') . '</Aliquota>';
             $xml .= '</Valores>';
            $xml .= '<IssRetido>' . $rps['issRetido'] . '</IssRetido>';
-$xml .= '<ItemListaServico>' . $rps['itemListaServico'] . '</ItemListaServico>';
-$xml .= '<Discriminacao>' . htmlspecialchars($rps['discriminacao'], ENT_XML1) . '</Discriminacao>';
-$xml .= '<CodigoMunicipio>' . $rps['codigoMunicipio'] . '</CodigoMunicipio>';
-$xml .= '<ExigibilidadeISS>' . $rps['exigibilidadeISS'] . '</ExigibilidadeISS>';
+            $xml .= '<ItemListaServico>' . $rps['itemListaServico'] . '</ItemListaServico>';
+            $xml .= '<Discriminacao>' . htmlspecialchars($rps['discriminacao'], ENT_XML1) . '</Discriminacao>';
+            $xml .= '<CodigoMunicipio>' . $rps['codigoMunicipio'] . '</CodigoMunicipio>';
+            $xml .= '<ExigibilidadeISS>' . $rps['exigibilidadeISS'] . '</ExigibilidadeISS>';
             $xml .= '</Servico>';
             $xml .= '<Prestador>';
             $xml .= '<CpfCnpj><Cnpj>' . $dados['cnpjPrestador'] . '</Cnpj></CpfCnpj>';
