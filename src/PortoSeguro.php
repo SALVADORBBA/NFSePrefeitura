@@ -19,46 +19,42 @@ class PortoSeguro
     }
 
     /* =========================================================
-     * CLIENT SOAP
+     * SOAP CLIENT
      * ========================================================= */
-    private function getSoapClient(array $options = []): SoapClient
+    private function client(): SoapClient
     {
-        $default = [
+        return new SoapClient(self::WSDL, [
             'soap_version' => SOAP_1_1,
             'trace'        => true,
             'exceptions'   => true,
             'cache_wsdl'   => WSDL_CACHE_NONE,
             'stream_context' => stream_context_create([
                 'ssl' => [
+                    'local_cert'        => $this->certPath,
+                    'passphrase'        => $this->certPassword,
                     'verify_peer'       => false,
                     'verify_peer_name'  => false,
                     'allow_self_signed' => true,
-                    'local_cert'        => $this->certPath,
-                    'passphrase'        => $this->certPassword,
                 ]
             ])
-        ];
-
-        return new SoapClient(self::WSDL, array_merge($default, $options));
+        ]);
     }
 
     /* =========================================================
-     * ENVIO GERAR NFSE
+     * ENVIO LOTE RPS
      * ========================================================= */
-    public function gerarNfse(array $dados): object
+    public function enviarLoteRps(array $dados): object
     {
-        $client = $this->getSoapClient();
-
-        $params = [
-            'nfseCabecMsg' => $this->gerarCabecalho(),
-            'nfseDadosMsg' => $this->gerarXmlGerarNfse($dados)
-        ];
+        $client = $this->client();
+        $xml    = $this->xmlEnviarLoteRps($dados);
 
         try {
-            return $client->__soapCall('GerarNfse', [$params]);
+            return $client->__soapCall('EnviarLoteRps', [[
+                'xml' => $xml
+            ]]);
         } catch (SoapFault $e) {
             throw new Exception(
-                "Erro SOAP: {$e->getMessage()}\n\nREQUEST:\n{$client->__getLastRequest()}\n\nRESPONSE:\n{$client->__getLastResponse()}",
+                "ERRO SOAP:\n{$e->getMessage()}\n\nREQUEST:\n{$client->__getLastRequest()}\n\nRESPONSE:\n{$client->__getLastResponse()}",
                 0,
                 $e
             );
@@ -66,81 +62,60 @@ class PortoSeguro
     }
 
     /* =========================================================
-     * CABEÇALHO NFSE
+     * XML ENVIAR LOTE RPS (ABRASF 1.00)
      * ========================================================= */
-    private function gerarCabecalho(): string
+    private function xmlEnviarLoteRps(array $dados): string
     {
-        return <<<XML
-<cabecalho versao="2.02">
-    <versaoDados>2.02</versaoDados>
-</cabecalho>
-XML;
-    }
+        $xml  = '<?xml version="1.0" encoding="UTF-8"?>';
+        $xml .= '<EnviarLoteRpsEnvio xmlns="http://www.abrasf.org.br/nfse.xsd">';
+        $xml .= '<LoteRps Id="Lote1">';
+        $xml .= "<NumeroLote>{$dados['numeroLote']}</NumeroLote>";
 
-    /* =========================================================
-     * XML GERAR NFSE (ABRASF 2.04)
-     * ========================================================= */
-    private function gerarXmlGerarNfse(array $dados): string
-    {
-        $xml  = '<?xml version="1.0" encoding="utf-8"?>';
-        $xml .= '<GerarNfseEnvio xmlns="http://www.abrasf.org.br/nfse.xsd">';
+        $xml .= '<CpfCnpj><Cnpj>' . $dados['cnpjPrestador'] . '</Cnpj></CpfCnpj>';
+        $xml .= "<InscricaoMunicipal>{$dados['inscricaoMunicipal']}</InscricaoMunicipal>";
+        $xml .= "<QuantidadeRps>" . count($dados['rps']) . "</QuantidadeRps>";
+        $xml .= '<ListaRps>';
 
         foreach ($dados['rps'] as $i => $rps) {
-
-            $rpsId = 'RPS' . ($i + 1);
-            $dpsId = 'DPS' . ($i + 1);
+            $id = 'Rps' . ($i + 1);
 
             $xml .= '<Rps>';
+            $xml .= "<InfRps Id=\"{$id}\">";
 
-            /* ================= INF RPS ================= */
-            $xml .= "<InfRps Id=\"{$rpsId}\">";
             $xml .= '<IdentificacaoRps>';
-            $xml .= "<Numero>{$rps['infRps']['numero']}</Numero>";
-            $xml .= "<Serie>{$rps['infRps']['serie']}</Serie>";
-            $xml .= "<Tipo>{$rps['infRps']['tipo']}</Tipo>";
+            $xml .= "<Numero>{$rps['numero']}</Numero>";
+            $xml .= "<Serie>{$rps['serie']}</Serie>";
+            $xml .= "<Tipo>1</Tipo>";
             $xml .= '</IdentificacaoRps>';
-            $xml .= "<DataEmissao>{$rps['infRps']['dataEmissao']}</DataEmissao>";
+
+            $xml .= "<DataEmissao>{$rps['dataEmissao']}</DataEmissao>";
             $xml .= '<Status>1</Status>';
-            $xml .= '</InfRps>';
 
-            /* ========== DECLARAÇÃO DE SERVIÇO ========== */
-            $xml .= "<InfDeclaracaoPrestacaoServico Id=\"{$dpsId}\">";
-
-            $xml .= '<Rps>';
-            $xml .= '<IdentificacaoRps>';
-            $xml .= "<Numero>{$rps['infRps']['numero']}</Numero>";
-            $xml .= "<Serie>{$rps['infRps']['serie']}</Serie>";
-            $xml .= "<Tipo>{$rps['infRps']['tipo']}</Tipo>";
-            $xml .= '</IdentificacaoRps>';
-            $xml .= '</Rps>';
-
-            $xml .= "<Competencia>{$rps['competencia']}</Competencia>";
-
-            /* ================= SERVIÇO ================= */
             $xml .= '<Servico>';
             $xml .= '<Valores>';
-            $xml .= '<ValorServicos>' . number_format($rps['valorServicos'], 2, '.', '') . '</ValorServicos>';
+            $xml .= '<ValorServicos>' . number_format($rps['valor'], 2, '.', '') . '</ValorServicos>';
             $xml .= '</Valores>';
             $xml .= "<ItemListaServico>{$rps['itemListaServico']}</ItemListaServico>";
-            $xml .= "<CodigoMunicipio>{$rps['codigoMunicipio']}</CodigoMunicipio>";
+            $xml .= "<CodigoMunicipio>2925303</CodigoMunicipio>";
+            $xml .= "<Discriminacao>{$rps['descricao']}</Discriminacao>";
             $xml .= '</Servico>';
 
-            /* ================= PRESTADOR ================= */
             $xml .= '<Prestador>';
             $xml .= '<CpfCnpj><Cnpj>' . $dados['cnpjPrestador'] . '</Cnpj></CpfCnpj>';
-            $xml .= '<InscricaoMunicipal>' . $dados['inscricaoMunicipal'] . '</InscricaoMunicipal>';
+            $xml .= "<InscricaoMunicipal>{$dados['inscricaoMunicipal']}</InscricaoMunicipal>";
             $xml .= '</Prestador>';
 
-            /* ================= TOMADOR ================= */
             $xml .= '<Tomador>';
-            $xml .= '<RazaoSocial>' . htmlspecialchars($rps['tomador']['razaoSocial'], ENT_XML1) . '</RazaoSocial>';
+            $xml .= "<RazaoSocial>{$rps['tomador']}</RazaoSocial>";
             $xml .= '</Tomador>';
 
-            $xml .= '</InfDeclaracaoPrestacaoServico>';
+            $xml .= '</InfRps>';
             $xml .= '</Rps>';
         }
 
-        $xml .= '</GerarNfseEnvio>';
+        $xml .= '</ListaRps>';
+        $xml .= '</LoteRps>';
+        $xml .= '</EnviarLoteRpsEnvio>';
 
         return $xml;
     }
