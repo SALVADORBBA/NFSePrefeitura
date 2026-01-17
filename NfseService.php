@@ -97,63 +97,66 @@ class NfseService
      */
     public function processar()
     {
-        $certPath = $this->certPath ?: 'app/certificado/1/6968c3b3791e6_695fa57fadf87_quimica.pfx';
-        $certPass = $this->certPassword ?: 'baby7902';
+        $certPath =  'app/certificado/1/6968c3b3791e6_695fa57fadf87_quimica.pfx';
+        $certPassword =  'baby7902';
         $wsdl = $this->wsdl;
 
-        $dados = [
-            "lote_id" => "Lote1",
-            "numeroLote" => "12345",
-            "cnpjPrestador" => "05257713000230",
-            "inscricaoMunicipal" => "173013001",
-            "quantidadeRps" => 1,
-            "rps" => [
-                [
-                    "inf_id" => "Rps1",
-                    "infRps" => [
-                        "numero" => "1",
-                        "serie" => "A",
-                        "tipo" => "1",
-                        "dataEmissao" =>'2026-01-16T10:35:00',
-                    ],
-                    "competencia" => "2026-01-01",
-                    "valorServicos" => "100.00",
-                    "valorIss" => "5.00",
-                    "aliquota" => "0.05",
-                    "issRetido" => "2",
-                    "itemListaServico" => "1401",
-                    "discriminacao" => "Serviço de exemplo",
-                    "codigoMunicipio" => "1234567",
-                    "exigibilidadeISS" => "1",
-                    "regimeEspecialTributacao" => "1",
-                    "optanteSimplesNacional" => "1",
-                    "incentivoFiscal" => "2",
-                    "tomador" => [
-                        "cpfCnpj" => "98765432000188",
-                        "inscricaoMunicipal" => "654321",
-                        "razaoSocial" => "Empresa Tomadora",
-                        "endereco" => [
-                            "logradouro" => "Rua Exemplo",
-                            "numero" => "100",
-                            "bairro" => "Centro",
-                            "codigoMunicipio" => "1234567",
-                            "uf" => "SP",
-                            "cep" => "12345000",
-                        ],
-                        "telefone" => "11999999999",
-                        "email" => "contato@empresa.com",
-                    ],
-                ],
+       $dados = [
+    'lote_id' => 'Lote532526430004311001133',
+    'numeroLote' => '133',
+    'cnpjPrestador' => '12345678912345',
+    'inscricaoMunicipal' => '1234',
+    'quantidadeRps' => 1,
+    'rps' => [
+        [
+            'inf_id' => 'Rps13331',
+            'infRps' => [
+                'numero' => '133',
+                'serie' => '3',
+                'tipo' => '1',
+                'dataEmissao' => '0001-01-01',
             ],
-        ];
+            'competencia' => '2014-03-17',
+            'valorServicos' => 400.00,
+            'valorIss' => 8.00,
+            'aliquota' => 0.0200,
+            'issRetido' => 1,
+            'itemListaServico' => '1401',
+            'discriminacao' => 'Discriminacao do servico',
+            'codigoMunicipio' => '3100401',
+            'exigibilidadeISS' => '3',
+            'regimeEspecialTributacao' => '1',
+            'optanteSimplesNacional' => '2',
+            'incentivoFiscal' => '2',
+            'tomador' => [
+                'cpfCnpj' => '12345678912345',
+                'inscricaoMunicipal' => '1234',
+                'razaoSocial' => 'TOMADOR',
+                'endereco' => [
+                    'logradouro' => 'TESTE',
+                    'numero' => '441',
+                    'bairro' => 'TESTE',
+                    'codigoMunicipio' => '3100401',
+                    'uf' => 'MG',
+                    'cep' => '35438000',
+                ],
+                'telefone' => '3433333333',
+                'email' => 'teste@dominiodoemail.com',
+            ],
+        ],
+    ],
+];
 
-        // 1. Gerar o XML do lote RPS
-        $xmlLote = PortoSeguro::gerarXmlLoteRps($dados);
-        self::salvar("01_xmlLote.xml", $xmlLote);
+$portoSeguro = new PortoSeguro($certPath, $certPassword);
+$xml = $portoSeguro->gerarXmlLoteRps($dados);
 
+// O $xml agora contém o XML completo, sem as tags de assinatura.
+        self::salvar("02_inicial.xml", $xml);
+        dd('XML Inicial');
+ exit;
         // 2. Assinar o XML usando NFSeSigner
         $xmlLoteAssinado = NFSeSigner::sign(
-            $xmlLote,
+            $xml,
             $certPath,
             $certPass,
             "InfDeclaracaoPrestacaoServico"
@@ -161,9 +164,9 @@ class NfseService
         self::salvar("02_xmlLoteAssinado.xml", $xmlLoteAssinado);
 
  
- 
+
         // 3. Enviar o XML assinado
-    $resposta = $this->enviar($xmlLoteAssinado, 'RecepcionarLoteRps');
+      $resposta = $this->enviar($xmlLoteAssinado, 'RecepcionarLoteRps');
  
             self::salvar("03_resposta.xml",$resposta->outputXML);
 
@@ -215,8 +218,79 @@ class NfseService
     }
 
 public static function gerarXmlLoteRps(array $dados): string
-    {
-        // Chama o método estático da classe PortoSeguro
-        return PortoSeguro::gerarXmlLoteRps($dados);
+{
+    // Gera o XML conforme padrão ABRASF, incluindo namespaces corretos
+    $xml  = '<?xml version="1.0" encoding="UTF-8"?>';
+    $xml .= '<EnviarLoteRpsEnvio xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.abrasf.org.br/nfse.xsd">';
+    $xml .= '<LoteRps Id="' . $dados['lote_id'] . '" versao="2.02">';
+    $xml .= '<NumeroLote>' . $dados['numeroLote'] . '</NumeroLote>';
+    $xml .= '<CpfCnpj><Cnpj>' . $dados['cnpjPrestador'] . '</Cnpj></CpfCnpj>';
+    $xml .= '<InscricaoMunicipal>' . $dados['inscricaoMunicipal'] . '</InscricaoMunicipal>';
+    $xml .= '<QuantidadeRps>' . $dados['quantidadeRps'] . '</QuantidadeRps>';
+    $xml .= '<ListaRps>';
+
+    foreach ($dados['rps'] as $rps) {
+        $dataEmissao = substr($rps['infRps']['dataEmissao'], 0, 10);
+        $xml .= '<Rps>';
+        $xml .= '<InfDeclaracaoPrestacaoServico Id="' . $rps['inf_id'] . '">';
+        $xml .= '<Rps>';
+        $xml .= '<IdentificacaoRps>';
+        $xml .= '<Numero>' . $rps['infRps']['numero'] . '</Numero>';
+        $xml .= '<Serie>' . $rps['infRps']['serie'] . '</Serie>';
+        $xml .= '<Tipo>' . $rps['infRps']['tipo'] . '</Tipo>';
+        $xml .= '</IdentificacaoRps>';
+        $xml .= '<DataEmissao>' . $dataEmissao . '</DataEmissao>';
+        $xml .= '<Status>1</Status>';
+        $xml .= '</Rps>';
+        $xml .= '<Competencia>' . $rps['competencia'] . '</Competencia>';
+        $xml .= '<Servico>';
+        $xml .= '<Valores>';
+        $xml .= '<ValorServicos>' . number_format($rps['valorServicos'], 2, '.', '') . '</ValorServicos>';
+        $xml .= '<ValorIss>' . number_format($rps['valorIss'], 2, '.', '') . '</ValorIss>';
+        $xml .= '<Aliquota>' . number_format($rps['aliquota'], 4, '.', '') . '</Aliquota>';
+        $xml .= '</Valores>';
+        $xml .= '<IssRetido>' . $rps['issRetido'] . '</IssRetido>';
+        $xml .= '<ItemListaServico>' . $rps['itemListaServico'] . '</ItemListaServico>';
+        $xml .= '<Discriminacao>' . htmlspecialchars($rps['discriminacao'], ENT_XML1) . '</Discriminacao>';
+        $xml .= '<CodigoMunicipio>' . $rps['codigoMunicipio'] . '</CodigoMunicipio>';
+        $xml .= '<ExigibilidadeISS>' . $rps['exigibilidadeISS'] . '</ExigibilidadeISS>';
+        $xml .= '</Servico>';
+        $xml .= '<Prestador>';
+        $xml .= '<CpfCnpj><Cnpj>' . $dados['cnpjPrestador'] . '</Cnpj></CpfCnpj>';
+        $xml .= '<InscricaoMunicipal>' . $dados['inscricaoMunicipal'] . '</InscricaoMunicipal>';
+        $xml .= '</Prestador>';
+        $xml .= '<Tomador>';
+        $xml .= '<IdentificacaoTomador>';
+        $xml .= '<CpfCnpj>';
+        $xml .= '<Cnpj>' . $rps['tomador']['cpfCnpj'] . '</Cnpj>';
+        $xml .= '</CpfCnpj>';
+        $xml .= '<InscricaoMunicipal>' . $rps['tomador']['inscricaoMunicipal'] . '</InscricaoMunicipal>';
+        $xml .= '</IdentificacaoTomador>';
+        $xml .= '<RazaoSocial>' . htmlspecialchars($rps['tomador']['razaoSocial'], ENT_XML1) . '</RazaoSocial>';
+        $xml .= '<Endereco>';
+        $xml .= '<Endereco>' . htmlspecialchars($rps['tomador']['endereco']['logradouro'], ENT_XML1) . '</Endereco>';
+        $xml .= '<Numero>' . $rps['tomador']['endereco']['numero'] . '</Numero>';
+        $xml .= '<Bairro>' . htmlspecialchars($rps['tomador']['endereco']['bairro'], ENT_XML1) . '</Bairro>';
+        $xml .= '<CodigoMunicipio>' . $rps['tomador']['endereco']['codigoMunicipio'] . '</CodigoMunicipio>';
+        $xml .= '<Uf>' . $rps['tomador']['endereco']['uf'] . '</Uf>';
+        $xml .= '<Cep>' . $rps['tomador']['endereco']['cep'] . '</Cep>';
+        $xml .= '</Endereco>';
+        $xml .= '<Contato>';
+        $xml .= '<Telefone>' . $rps['tomador']['telefone'] . '</Telefone>';
+        $xml .= '<Email>' . htmlspecialchars($rps['tomador']['email'], ENT_XML1) . '</Email>';
+        $xml .= '</Contato>';
+        $xml .= '</Tomador>';
+        $xml .= '<RegimeEspecialTributacao>' . $rps['regimeEspecialTributacao'] . '</RegimeEspecialTributacao>';
+        $xml .= '<OptanteSimplesNacional>' . $rps['optanteSimplesNacional'] . '</OptanteSimplesNacional>';
+        $xml .= '<IncentivoFiscal>' . $rps['incentivoFiscal'] . '</IncentivoFiscal>';
+        $xml .= '</InfDeclaracaoPrestacaoServico>';
+        $xml .= '</Rps>';
     }
+
+    $xml .= '</ListaRps>';
+    $xml .= '</LoteRps>';
+    $xml .= '</EnviarLoteRpsEnvio>';
+
+    return $xml;
+}
 }
