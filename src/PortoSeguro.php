@@ -180,21 +180,7 @@ class PortoSeguro
 
         // DataEmissao: muitos provedores exigem DATETIME (não só date)
         $dataEmissaoRaw = (string)($rps['infRps']['dataEmissao'] ?? '');
-        $dataEmissao = '';
-        if ($dataEmissaoRaw !== '') {
-            $dt = new \DateTime($dataEmissaoRaw);
-            $dataEmissao = $dt->format('Ymd'); // Formato completo conforme ABRASF
-        }
-
-
-
-
-
-
-
-
-
-        
+               
         // Competencia normalmente é date (YYYY-MM-DD), mas aceitam datetime em alguns. Vamos normalizar pra date.
         $competenciaRaw = (string)($rps['competencia'] ?? '');
         $competencia    = $this->normalizeDate($competenciaRaw, true);
@@ -254,7 +240,7 @@ class PortoSeguro
 // Se quiser alterar o valor, faça aqui:
 // Exemplo: $cnpjPrestador = '12345678000199';
         $inscricaoMunicipal = (string)($loteDados['inscricaoMunicipal'] ?? '');
-       $dataEmissao = $this->forceTimezone((string)($rps['infRps']['dataEmissao'] ?? ''));
+ 
 
         $x  = '<Rps>';
         $x .= '<InfDeclaracaoPrestacaoServico Id="' . $this->xmlEscape($infId) . '">';
@@ -265,7 +251,7 @@ class PortoSeguro
         $x .= '<Serie>' . $this->xmlEscape($serie) . '</Serie>';
         $x .= '<Tipo>' . $this->xmlEscape($tipo) . '</Tipo>';
         $x .= '</IdentificacaoRps>';
-        $x .= '<DataEmissao>' . $dataEmissao . '</DataEmissao>';        
+        $x .= '<DataEmissao>' . $dataEmissaoRaw . '</DataEmissao>';        
         $x .= '<Status>1</Status>';
         $x .= '</Rps>';
 
