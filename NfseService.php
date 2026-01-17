@@ -15,7 +15,7 @@ class NfseService
     public function __construct($wsdl = null, $certPath = null, $certPassword = null)
     {
         // Usa sempre o caminho relativo, conforme confirmado pelo usuário
-       // $wsdlPath = $wsdl ?: 'app/ws/nfse.wsdl';
+        $wsdlPath = $wsdl ?: 'app/ws/nfse.wsdl';
         if (!file_exists($wsdlPath)) {
             throw new \Exception('Arquivo WSDL não encontrado: ' . $wsdlPath);
         }
@@ -76,8 +76,20 @@ class NfseService
      */
     public function enviar($xmlAssinado, $metodo)
     {
-        $params = ['xml' => $xmlAssinado];
-        return $this->client->__soapCall($metodo, [$params]);
+        // $params = ['xml' => $xmlAssinado];
+        // return $this->client->__soapCall($metodo, [$params]);
+
+
+
+   $cabecalho = '<cabecalho xmlns="http://www.abrasf.org.br/nfse.xsd" versao="2.04"><versaoDados>2.02</versaoDados></cabecalho>';
+    $params = [
+        'nfseCabecMsg' => $cabecalho,
+        'nfseDadosMsg' => $xmlAssinado
+    ];
+    return $this->client->__soapCall($metodo, [$params]);
+
+
+
     }
 
     /**
@@ -92,8 +104,8 @@ class NfseService
         $dados = [
             "lote_id" => "Lote1",
             "numeroLote" => "12345",
-            "cnpjPrestador" => "12345678000199",
-            "inscricaoMunicipal" => "123456",
+            "cnpjPrestador" => "05257713000230",
+            "inscricaoMunicipal" => "173013001",
             "quantidadeRps" => 1,
             "rps" => [
                 [
@@ -102,9 +114,9 @@ class NfseService
                         "numero" => "1",
                         "serie" => "A",
                         "tipo" => "1",
-                        "dataEmissao" => "2024-06-01T10:00:00",
+                        "dataEmissao" =>'2026-01-16T10:35:00',
                     ],
-                    "competencia" => "2024-06-01",
+                    "competencia" => "2026-01-01",
                     "valorServicos" => "100.00",
                     "valorIss" => "5.00",
                     "aliquota" => "0.05",
@@ -148,18 +160,21 @@ class NfseService
         );
         self::salvar("02_xmlLoteAssinado.xml", $xmlLoteAssinado);
 
+ 
+ 
         // 3. Enviar o XML assinado
-        $resposta = $this->enviar($xmlLoteAssinado, 'RecepcionarLoteRps');
-        if ($resposta) {
-            self::salvar("03_resposta.xml", $resposta);
-        } else {
-            var_dump($resposta);
-        }
+    $resposta = $this->enviar($xmlLoteAssinado, 'RecepcionarLoteRps');
+ 
+            self::salvar("03_resposta.xml",$resposta->outputXML);
+
+
+
+            return    $resposta;
     }
 
     private static function salvar(string $nome, string $conteudo): void
     {
-        $dir = __DIR__ . "/app/xml_nfse/";
+        $dir =   "app/xml_nfse/";
         if (!is_dir($dir)) {
             mkdir($dir, 0777, true);
         }
@@ -197,5 +212,11 @@ class NfseService
         }
 
         return $response;
+    }
+
+public static function gerarXmlLoteRps(array $dados): string
+    {
+        // Chama o método estático da classe PortoSeguro
+        return PortoSeguro::gerarXmlLoteRps($dados);
     }
 }
