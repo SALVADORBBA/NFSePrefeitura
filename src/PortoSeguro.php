@@ -179,7 +179,9 @@ class PortoSeguro
         $tipo   = $this->required($infRps, 'tipo');
 
         // DataEmissao: muitos provedores exigem DATETIME (não só date)
-        $dataEmissaoRaw = (string)($rps['infRps']['dataEmissao'] ?? '');
+    $dataEmissao = $this->normalizeDataEmissao((string)($rps['infRps']['dataEmissao'] ?? ''));
+
+
                
         // Competencia normalmente é date (YYYY-MM-DD), mas aceitam datetime em alguns. Vamos normalizar pra date.
         $competenciaRaw = (string)($rps['competencia'] ?? '');
@@ -251,7 +253,7 @@ class PortoSeguro
         $x .= '<Serie>' . $this->xmlEscape($serie) . '</Serie>';
         $x .= '<Tipo>' . $this->xmlEscape($tipo) . '</Tipo>';
         $x .= '</IdentificacaoRps>';
-        $x .= '<DataEmissao>' . $dataEmissaoRaw . '</DataEmissao>';        
+      $x .= '<DataEmissao>' . $dataEmissao . '</DataEmissao>'; 
         $x .= '<Status>1</Status>';
         $x .= '</Rps>';
 
@@ -480,32 +482,32 @@ class PortoSeguro
         return date('Y-m-d\TH:i:s', $ts);
     }
 
-    private function forceTimezone(string $dt): string
+private function normalizeDataEmissao(string $raw): string
 {
-    $dt = trim($dt);
-
-    if ($dt === '') {
+    $raw = trim($raw);
+    if ($raw === '') {
         throw new Exception('DataEmissao obrigatória.');
     }
 
-    // já tem timezone (Z ou -03:00)
-    if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+\-]\d{2}:\d{2})$/', $dt)) {
-        return $dt;
+    // já está ok: 2026-01-17T14:27:03-03:00 ou Z
+    if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+\-]\d{2}:\d{2})$/', $raw)) {
+        return $raw;
     }
 
-    // sem timezone: adiciona -03:00
-    if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/', $dt)) {
-        return $dt . '-03:00';
+    // veio sem timezone: adiciona -03:00
+    if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/', $raw)) {
+        return $raw . '-03:00';
     }
 
-    // veio só date: completa
-    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dt)) {
-        return $dt . 'T00:00:00-03:00';
+    // veio AAAAMMDD: converte para dateTime com TZ (GestãoISS costuma aceitar assim)
+    if (preg_match('/^\d{8}$/', $raw)) {
+        return substr($raw, 0, 4) . '-' . substr($raw, 4, 2) . '-' . substr($raw, 6, 2) . 'T00:00:00-03:00';
     }
 
-    // fallback: tenta parsear
-    $d = new DateTime($dt, new DateTimeZone('America/Sao_Paulo'));
-    return $d->format('Y-m-d\TH:i:sP');
+    // fallback
+    $dt = new DateTime($raw, new DateTimeZone('America/Sao_Paulo'));
+    return $dt->format('Y-m-d\TH:i:sP');
 }
+
 
 }
