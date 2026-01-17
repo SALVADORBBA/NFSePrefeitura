@@ -4,20 +4,23 @@ namespace NFSePrefeitura\NFSe;
 use SoapClient;
 use SoapFault;
 use Exception;
+use DateTime;
+use DateTimeZone;
 
 /**
  * PortoSeguro - ABRASF v2.02 (GestaoISS) - Porto Seguro/BA
  *
- * - Gera XML do Lote RPS (EnviarLoteRpsEnvio) sem assinatura (pronto para assinar externamente).
- * - Envia via SOAP usando os métodos do WSDL:
+ * Objetivo:
+ * - Gerar XML do Lote RPS (EnviarLoteRpsEnvio) SEM assinatura (assinar externamente).
+ * - Enviar via SOAP usando:
  *   - RecepcionarLoteRps
  *   - RecepcionarLoteRpsSincrono
  *
- * Pontos críticos tratados:
- * - NÃO gera tags vazias (para evitar erro de schema).
- * - Valida e monta CPF/CNPJ do tomador corretamente.
- * - DataEmissao e Competencia normalizadas para dateTime / date conforme exigência (com fallback seguro).
- * - Valores numéricos formatados corretamente.
+ * Ajustes importantes:
+ * - Evita tags vazias (schema costuma rejeitar).
+ * - CPF/CNPJ do tomador correto.
+ * - DataEmissao e Competencia geradas no formato YYYYMMDD (8 dígitos) para passar no schema do provedor.
+ * - Formatação de valores (2 casas) e alíquota (4 casas).
  */
 class PortoSeguro
 {
@@ -59,7 +62,6 @@ class PortoSeguro
      * ========================================================= */
     private function cabecMsg(string $versao = '2.02'): string
     {
-        // O provedor normalmente pede isso exatamente como string XML
         return '<?xml version="1.0" encoding="UTF-8"?>'
             . '<cabecalho xmlns="http://www.abrasf.org.br/nfse.xsd" versao="' . $this->xmlEscape($versao) . '">'
             . '<versaoDados>' . $this->xmlEscape($versao) . '</versaoDados>'
@@ -119,24 +121,22 @@ class PortoSeguro
     public function gerarXmlLoteRps(array $dados, string $versao = '2.02'): string
     {
         // ------- validações mínimas do lote -------
-        $loteId             = $this->required($dados, 'lote_id');
-        $numeroLote         = $this->required($dados, 'numeroLote');
-        $cnpjPrestador      = $this->onlyDigits($this->required($dados, 'cnpjPrestador'));
-        $inscricaoMunicipal = $this->required($dados, 'inscricaoMunicipal');
+        $loteId             = (string)$this->required($dados, 'lote_id');
+        $numeroLote         = (string)$this->required($dados, 'numeroLote');
+        $cnpjPrestador      = $this->onlyDigits((string)$this->required($dados, 'cnpjPrestador'));
+        $inscricaoMunicipal = (string)$this->required($dados, 'inscricaoMunicipal');
         $rpsList            = $this->required($dados, 'rps');
 
         if (strlen($cnpjPrestador) !== 14) {
             throw new Exception("cnpjPrestador inválido (precisa 14 dígitos). Recebido: {$cnpjPrestador}");
         }
-
         if (!is_array($rpsList) || count($rpsList) < 1) {
             throw new Exception("Lista de RPS vazia/inválida em dados['rps'].");
         }
 
-        $quantidadeRps = (string)(isset($dados['quantidadeRps']) ? (int)$dados['quantidadeRps'] : count($rpsList));
-        if ((int)$quantidadeRps !== count($rpsList)) {
-            // não impede, mas evita divergência
-            $quantidadeRps = (string)count($rpsList);
+        $quantidadeRps = (int)($dados['quantidadeRps'] ?? count($rpsList));
+        if ($quantidadeRps !== count($rpsList)) {
+            $quantidadeRps = count($rpsList);
         }
 
         $x  = '<?xml version="1.0" encoding="utf-8"?>';
@@ -147,7 +147,7 @@ class PortoSeguro
         $x .= '<NumeroLote>' . $this->xmlEscape($numeroLote) . '</NumeroLote>';
         $x .= '<CpfCnpj><Cnpj>' . $this->xmlEscape($cnpjPrestador) . '</Cnpj></CpfCnpj>';
         $x .= '<InscricaoMunicipal>' . $this->xmlEscape($inscricaoMunicipal) . '</InscricaoMunicipal>';
-        $x .= '<QuantidadeRps>' . $this->xmlEscape($quantidadeRps) . '</QuantidadeRps>';
+        $x .= '<QuantidadeRps>' . $this->xmlEscape((string)$quantidadeRps) . '</QuantidadeRps>';
         $x .= '<ListaRps>';
 
         foreach ($rpsList as $idx => $rps) {
@@ -166,37 +166,34 @@ class PortoSeguro
 
     private function xmlRps(array $rps, array $loteDados): string
     {
-        // ------- mínimos do RPS -------
-        $infId  = $this->required($rps, 'inf_id');
+        $infId  = (string)$this->required($rps, 'inf_id');
         $infRps = $this->required($rps, 'infRps');
 
         if (!is_array($infRps)) {
             throw new Exception("infRps inválido no RPS {$infId}.");
         }
 
-        $numero = $this->required($infRps, 'numero');
-        $serie  = $this->required($infRps, 'serie');
-        $tipo   = $this->required($infRps, 'tipo');
+        $numero = (string)$this->required($infRps, 'numero');
+        $serie  = (string)$this->required($infRps, 'serie');
+        $tipo   = (string)$this->required($infRps, 'tipo');
 
-        // DataEmissao: muitos provedores exigem DATETIME (não só date)
-    $dataEmissao = $this->normalizeDataEmissao((string)($rps['infRps']['dataEmissao'] ?? ''));
+        // ✅ FORÇA PADRÃO YYYYMMDD (8 dígitos) para passar no schema do provedor
+        $dataEmissao = $this->normalizeDateYmd((string)($infRps['dataEmissao'] ?? ''), true);
+        $competencia = $this->normalizeDateYmd((string)($rps['competencia'] ?? ''), true);
 
+        // Serviço
+        $valorServicos    = $this->money($rps['valorServicos'] ?? null, true, "valorServicos (RPS {$infId})");
+        $valorIss         = $this->money($rps['valorIss'] ?? 0);
+        $aliquota         = $this->percent($rps['aliquota'] ?? 0, 4);
 
-               
-        // Competencia normalmente é date (YYYY-MM-DD), mas aceitam datetime em alguns. Vamos normalizar pra date.
-        $competenciaRaw = (string)($rps['competencia'] ?? '');
-        $competencia    = $this->normalizeDate($competenciaRaw, true);
+        $issRetido        = (string)$this->required($rps, 'issRetido'); // 1/2
+        $itemListaServico = (string)$this->required($rps, 'itemListaServico');
 
-        // Serviço (obrigatórios mais comuns)
-        $valorServicos      = $this->money($rps['valorServicos'] ?? null, true, "valorServicos (RPS {$infId})");
-        $valorIss           = $this->money($rps['valorIss'] ?? 0);
-        $aliquota           = $this->percent($rps['aliquota'] ?? 0, 4);
+        $discriminacao = (string)($rps['discriminacao'] ?? '');
+        $discriminacao = $this->normalizeDiscriminacao($discriminacao, $infId);
 
-        $issRetido          = $this->required($rps, 'issRetido'); // 1/2
-        $itemListaServico   = $this->required($rps, 'itemListaServico');
-        $discriminacao      = (string)($rps['discriminacao'] ?? '');
-        $codigoMunicipio    = $this->required($rps, 'codigoMunicipio');
-        $exigibilidadeISS   = $this->required($rps, 'exigibilidadeISS');
+        $codigoMunicipio  = (string)$this->required($rps, 'codigoMunicipio');
+        $exigibilidadeISS = (string)$this->required($rps, 'exigibilidadeISS');
 
         // Tomador
         $tomador = $this->required($rps, 'tomador');
@@ -207,8 +204,8 @@ class PortoSeguro
         $docTomadorRaw = (string)($tomador['cpfCnpj'] ?? '');
         $docTomadorXml = $this->xmlCpfCnpj($docTomadorRaw, "tomador.cpfCnpj (RPS {$infId})");
 
-        $razaoSocial = (string)($tomador['razaoSocial'] ?? '');
-        if (trim($razaoSocial) === '') {
+        $razaoSocial = trim((string)($tomador['razaoSocial'] ?? ''));
+        if ($razaoSocial === '') {
             throw new Exception("tomador.razaoSocial obrigatório (RPS {$infId}).");
         }
 
@@ -217,32 +214,27 @@ class PortoSeguro
             throw new Exception("tomador.endereco obrigatório/ inválido (RPS {$infId}).");
         }
 
-        $logradouro      = $this->required($end, 'logradouro');
-        $numeroEnd       = $this->required($end, 'numero');
-        $bairro          = $this->required($end, 'bairro');
-        $codMunTomador   = $this->required($end, 'codigoMunicipio');
-        $uf              = $this->required($end, 'uf');
-        $cep             = $this->onlyDigits($this->required($end, 'cep'));
+        $logradouro    = (string)$this->required($end, 'logradouro');
+        $numeroEnd     = (string)$this->required($end, 'numero');
+        $bairro        = (string)$this->required($end, 'bairro');
+        $codMunTomador = (string)$this->required($end, 'codigoMunicipio');
+        $uf            = (string)$this->required($end, 'uf');
+        $cep           = $this->onlyDigits((string)$this->required($end, 'cep'));
         if (strlen($cep) !== 8) {
             throw new Exception("tomador.endereco.cep inválido (precisa 8 dígitos). Recebido: {$cep} (RPS {$infId})");
         }
 
-        // Contato (opcional na maioria, mas se vier, não pode vir vazio)
         $telefone = $this->onlyDigits((string)($tomador['telefone'] ?? ''));
-        $email    = (string)($tomador['email'] ?? '');
+        $email    = trim((string)($tomador['email'] ?? ''));
 
-        // Regimes finais
-        $regimeEspecialTributacao = (string)($rps['regimeEspecialTributacao'] ?? '0');
-        $optanteSimplesNacional   = (string)($rps['optanteSimplesNacional'] ?? '2'); // 1=Sim 2=Não (comum)
-        $incentivoFiscal          = (string)($rps['incentivoFiscal'] ?? '2');        // 1=Sim 2=Não (comum)
+        // Regimes (não mandar vazio)
+        $regimeEspecialTributacao = trim((string)($rps['regimeEspecialTributacao'] ?? '0'));
+        $optanteSimplesNacional   = trim((string)($rps['optanteSimplesNacional'] ?? '2'));
+        $incentivoFiscal          = trim((string)($rps['incentivoFiscal'] ?? '2'));
 
         // Prestador do lote
-        $cnpjPrestador      = $this->onlyDigits((string)($loteDados['cnpjPrestador'] ?? ''));
-// ALTERAÇÃO: garantir que o CNPJ seja sempre string e apenas dígitos
-// Se quiser alterar o valor, faça aqui:
-// Exemplo: $cnpjPrestador = '12345678000199';
-        $inscricaoMunicipal = (string)($loteDados['inscricaoMunicipal'] ?? '');
- 
+        $cnpjPrestadorLote = $this->onlyDigits((string)($loteDados['cnpjPrestador'] ?? ''));
+        $inscMunLote       = (string)($loteDados['inscricaoMunicipal'] ?? '');
 
         $x  = '<Rps>';
         $x .= '<InfDeclaracaoPrestacaoServico Id="' . $this->xmlEscape($infId) . '">';
@@ -253,7 +245,7 @@ class PortoSeguro
         $x .= '<Serie>' . $this->xmlEscape($serie) . '</Serie>';
         $x .= '<Tipo>' . $this->xmlEscape($tipo) . '</Tipo>';
         $x .= '</IdentificacaoRps>';
-      $x .= '<DataEmissao>' . $dataEmissao . '</DataEmissao>'; 
+        $x .= '<DataEmissao>' . $this->xmlEscape($dataEmissao) . '</DataEmissao>';
         $x .= '<Status>1</Status>';
         $x .= '</Rps>';
 
@@ -262,34 +254,25 @@ class PortoSeguro
         $x .= '<Servico>';
         $x .= '<Valores>';
         $x .= '<ValorServicos>' . $this->xmlEscape($valorServicos) . '</ValorServicos>';
-        $x .= $this->tag('ValorIss', $valorIss);   // pode ser 0, mas permitido
-        $x .= $this->tag('Aliquota', $aliquota);   // pode ser 0
+        $x .= $this->tag('ValorIss', $valorIss);
+        $x .= $this->tag('Aliquota', $aliquota);
         $x .= '</Valores>';
 
-        // obrigatórios e sem vazio
         $x .= '<IssRetido>' . $this->xmlEscape($issRetido) . '</IssRetido>';
         $x .= '<ItemListaServico>' . $this->xmlEscape($itemListaServico) . '</ItemListaServico>';
-
-        // Discriminacao pode ser obrigatória dependendo do provedor; aqui exigimos pelo menos algo
-        if (trim($discriminacao) === '') {
-            throw new Exception("discriminacao obrigatória (RPS {$infId}).");
-        }
         $x .= '<Discriminacao>' . $this->xmlEscape($discriminacao) . '</Discriminacao>';
-
         $x .= '<CodigoMunicipio>' . $this->xmlEscape($codigoMunicipio) . '</CodigoMunicipio>';
         $x .= '<ExigibilidadeISS>' . $this->xmlEscape($exigibilidadeISS) . '</ExigibilidadeISS>';
         $x .= '</Servico>';
 
         $x .= '<Prestador>';
-        $x .= '<CpfCnpj><Cnpj>' . $this->xmlEscape($cnpjPrestador) . '</Cnpj></CpfCnpj>';
-        $x .= '<InscricaoMunicipal>' . $this->xmlEscape($inscricaoMunicipal) . '</InscricaoMunicipal>';
+        $x .= '<CpfCnpj><Cnpj>' . $this->xmlEscape($cnpjPrestadorLote) . '</Cnpj></CpfCnpj>';
+        $x .= '<InscricaoMunicipal>' . $this->xmlEscape($inscMunLote) . '</InscricaoMunicipal>';
         $x .= '</Prestador>';
 
         $x .= '<Tomador>';
         $x .= '<IdentificacaoTomador>';
         $x .= $docTomadorXml;
-
-        // Inscrição municipal do tomador é opcional: só gera se tiver algo
         $x .= $this->tagIf('InscricaoMunicipal', (string)($tomador['inscricaoMunicipal'] ?? ''));
         $x .= '</IdentificacaoTomador>';
 
@@ -304,7 +287,6 @@ class PortoSeguro
         $x .= '<Cep>' . $this->xmlEscape($cep) . '</Cep>';
         $x .= '</Endereco>';
 
-        // Contato só se tiver algo
         $contato = '';
         $contato .= $this->tagIf('Telefone', $telefone);
         $contato .= $this->tagIf('Email', $email);
@@ -314,7 +296,6 @@ class PortoSeguro
 
         $x .= '</Tomador>';
 
-        // Regimes - não mandar vazio
         $x .= $this->tagIf('RegimeEspecialTributacao', $regimeEspecialTributacao);
         $x .= $this->tagIf('OptanteSimplesNacional', $optanteSimplesNacional);
         $x .= $this->tagIf('IncentivoFiscal', $incentivoFiscal);
@@ -326,7 +307,7 @@ class PortoSeguro
     }
 
     /* =========================================================
-     * HELPERS XML / VALIDAÇÕES
+     * HELPERS / VALIDAÇÕES
      * ========================================================= */
 
     private function required(array $arr, string $key)
@@ -335,12 +316,14 @@ class PortoSeguro
             throw new Exception("Campo obrigatório ausente: {$key}");
         }
         $v = $arr[$key];
-        if (is_string($v) && trim($v) === '') {
-            throw new Exception("Campo obrigatório vazio: {$key}");
-        }
+
         if ($v === null) {
             throw new Exception("Campo obrigatório nulo: {$key}");
         }
+        if (is_string($v) && trim($v) === '') {
+            throw new Exception("Campo obrigatório vazio: {$key}");
+        }
+
         return $v;
     }
 
@@ -351,13 +334,11 @@ class PortoSeguro
 
     private function xmlEscape(string $v): string
     {
-        // ENT_XML1: correto para XML; evita quebrar tags
         return htmlspecialchars($v, ENT_XML1 | ENT_QUOTES, 'UTF-8');
     }
 
     private function tag(string $tag, string $value): string
     {
-        // sempre gera (mesmo que 0.0000)
         return "<{$tag}>{$this->xmlEscape($value)}</{$tag}>";
     }
 
@@ -393,10 +374,15 @@ class PortoSeguro
             return number_format(0, 2, '.', '');
         }
 
-        // aceita "1.234,56" ou "1234.56"
         $s = (string)$v;
-        $s = str_replace(['.', ' '], ['', ''], $s); // remove separador milhar comum
-        $s = str_replace(',', '.', $s);
+        // remove espaços
+        $s = str_replace(' ', '', $s);
+
+        // tenta normalizar BR: 1.234,56
+        if (strpos($s, ',') !== false) {
+            $s = str_replace('.', '', $s);
+            $s = str_replace(',', '.', $s);
+        }
 
         if (!is_numeric($s)) {
             throw new Exception("Valor monetário inválido em {$label}: {$v}");
@@ -410,9 +396,14 @@ class PortoSeguro
         if ($v === null || $v === '') {
             $v = 0;
         }
+
         $s = (string)$v;
-        $s = str_replace(['.', ' '], ['', ''], $s);
-        $s = str_replace(',', '.', $s);
+        $s = str_replace(' ', '', $s);
+
+        if (strpos($s, ',') !== false) {
+            $s = str_replace('.', '', $s);
+            $s = str_replace(',', '.', $s);
+        }
 
         if (!is_numeric($s)) {
             throw new Exception("Percentual inválido: {$v}");
@@ -422,12 +413,18 @@ class PortoSeguro
     }
 
     /**
-     * Normaliza para date (YYYY-MM-DD).
-     * Se required=true e vazio -> exception.
+     * ✅ Normaliza data para YYYYMMDD (8 dígitos).
+     * Aceita:
+     * - 2026-01-17
+     * - 2026-01-17T14:27:03
+     * - 2026-01-17T14:27:03-03:00
+     * - 20260117
+     * - 20260117142703 (corta pra 8)
      */
-    private function normalizeDate(string $raw, bool $required = false): string
+    private function normalizeDateYmd(string $raw, bool $required = false): string
     {
         $raw = trim($raw);
+
         if ($raw === '') {
             if ($required) {
                 throw new Exception("Data obrigatória não informada.");
@@ -435,79 +432,42 @@ class PortoSeguro
             return '';
         }
 
-        // Se vier datetime, pega só date
+        // 2026-01-17...
         if (preg_match('/^\d{4}-\d{2}-\d{2}/', $raw)) {
-            return substr($raw, 0, 10);
+            $d = substr($raw, 0, 10);
+            return str_replace('-', '', $d);
         }
 
-        // fallback simples: tenta strtotime
-        $ts = strtotime($raw);
-        if ($ts === false) {
-            throw new Exception("Data inválida: {$raw}");
+        // extrai dígitos
+        $digits = preg_replace('/\D+/', '', $raw) ?? '';
+
+        if (strlen($digits) >= 8) {
+            return substr($digits, 0, 8);
         }
 
-        return date('Y-m-d', $ts);
+        // fallback robusto
+        $dt = new DateTime($raw, new DateTimeZone('America/Sao_Paulo'));
+        return $dt->format('Ymd');
     }
 
     /**
-     * Normaliza para dateTime (YYYY-MM-DDTHH:MM:SS).
-     * Alguns provedores aceitam timezone, mas aqui mantemos formato básico.
+     * Normaliza discriminacao:
+     * - remove excesso de espaços/linhas
+     * - remove duplicação de prefixo "1- 1-"
      */
-    private function normalizeDateTime(string $raw, bool $required = false): string
+    private function normalizeDiscriminacao(string $disc, string $infId): string
     {
-        $raw = trim($raw);
-        if ($raw === '') {
-            if ($required) {
-                throw new Exception("Data/hora obrigatória não informada.");
-            }
-            return '';
+        $disc = trim($disc);
+        $disc = preg_replace('/[\r\n]+/', ' ', $disc);
+        $disc = preg_replace('/\s+/', ' ', $disc);
+
+        // remove duplicação comum: "1- 1- ..."
+        $disc = preg_replace('/(^|\s)1-\s+1-\s*/', '$1', $disc);
+
+        if ($disc === '') {
+            throw new Exception("discriminacao obrigatória (RPS {$infId}).");
         }
 
-        // já é datetime ISO (com ou sem timezone)
-        if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/', $raw)) {
-            return substr($raw, 0, 19);
-        }
-
-        // se vier só date, adiciona 00:00:00
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw)) {
-            return $raw . 'T00:00:00';
-        }
-
-        // fallback: tenta strtotime
-        $ts = strtotime($raw);
-        if ($ts === false) {
-            throw new Exception("Data/hora inválida: {$raw}");
-        }
-
-        return date('Y-m-d\TH:i:s', $ts);
+        return $disc;
     }
-
-private function normalizeDataEmissao(string $raw): string
-{
-    $raw = trim($raw);
-    if ($raw === '') {
-        throw new Exception('DataEmissao obrigatória.');
-    }
-
-    // já está ok: 2026-01-17T14:27:03-03:00 ou Z
-    if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+\-]\d{2}:\d{2})$/', $raw)) {
-        return $raw;
-    }
-
-    // veio sem timezone: adiciona -03:00
-    if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/', $raw)) {
-        return $raw . '-03:00';
-    }
-
-    // veio AAAAMMDD: converte para dateTime com TZ (GestãoISS costuma aceitar assim)
-    if (preg_match('/^\d{8}$/', $raw)) {
-        return substr($raw, 0, 4) . '-' . substr($raw, 4, 2) . '-' . substr($raw, 6, 2) . 'T00:00:00-03:00';
-    }
-
-    // fallback
-    $dt = new DateTime($raw, new DateTimeZone('America/Sao_Paulo'));
-    return $dt->format('Y-m-d\TH:i:sP');
-}
-
-
 }
