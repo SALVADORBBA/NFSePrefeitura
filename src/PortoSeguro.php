@@ -1,4 +1,5 @@
 <?php
+
 namespace NFSePrefeitura\NFSe;
 
 use SoapClient;
@@ -50,8 +51,8 @@ class PortoSeguro
     private function cabecMsg(string $versao = '2.02'): string
     {
         return '<cabecalho xmlns="http://www.abrasf.org.br/nfse.xsd" versao="' . $this->xmlEscape($versao) . '">'
-             . '<versaoDados>' . $this->xmlEscape($versao) . '</versaoDados>'
-             . '</cabecalho>';
+            . '<versaoDados>' . $this->xmlEscape($versao) . '</versaoDados>'
+            . '</cabecalho>';
     }
 
     public function recepcionarLoteRps(array $dados, string $versao = '2.02'): object
@@ -217,6 +218,7 @@ class PortoSeguro
         $x .= '<Competencia>' . $this->xmlEscape($competencia) . '</Competencia>';
 
         $x .= '<Servico>';
+
         $x .= '<Valores>';
         $x .= '<ValorServicos>' . $this->xmlEscape($valorServicos) . '</ValorServicos>';
         $x .= '<ValorIss>' . $this->xmlEscape($valorIss) . '</ValorIss>';
@@ -225,10 +227,36 @@ class PortoSeguro
 
         $x .= '<IssRetido>' . $this->xmlEscape($issRetido) . '</IssRetido>';
         $x .= '<ItemListaServico>' . $this->xmlEscape($itemListaServico) . '</ItemListaServico>';
+
+        // Se você tiver CNAE no banco, mande (muito comum ser aceito/esperado)
+        if (!empty($rps['codigoCnae'])) {
+            $x .= '<CodigoCnae>' . $this->xmlEscape($this->onlyDigits((string)$rps['codigoCnae'])) . '</CodigoCnae>';
+        }
+
+        // GestãoISS frequentemente valida isso (se você tiver no cadastro)
+        if (!empty($rps['codigoTributacaoMunicipio'])) {
+            $x .= '<CodigoTributacaoMunicipio>' . $this->xmlEscape((string)$rps['codigoTributacaoMunicipio']) . '</CodigoTributacaoMunicipio>';
+        }
+
+        // Discriminacao obrigatória
         $x .= '<Discriminacao>' . $this->xmlEscape($discriminacao) . '</Discriminacao>';
+
+        // ATENÇÃO: em alguns provedores, CodigoMunicipio é do PRESTADOR,
+        // e MunicipioIncidencia é a incidência do ISS.
+        // Se você só tem um, replique no outro quando exigido.
         $x .= '<CodigoMunicipio>' . $this->xmlEscape($codigoMunicipio) . '</CodigoMunicipio>';
+
+        if (!empty($rps['municipioIncidencia'])) {
+            $x .= '<MunicipioIncidencia>' . $this->xmlEscape((string)$rps['municipioIncidencia']) . '</MunicipioIncidencia>';
+        } else {
+            // fallback seguro quando o provedor exige MunicipioIncidencia
+            $x .= '<MunicipioIncidencia>' . $this->xmlEscape($codigoMunicipio) . '</MunicipioIncidencia>';
+        }
+
         $x .= '<ExigibilidadeISS>' . $this->xmlEscape($exigibilidadeISS) . '</ExigibilidadeISS>';
+
         $x .= '</Servico>';
+
 
         $x .= '<Prestador>';
         $x .= '<CpfCnpj><Cnpj>' . $this->xmlEscape($cnpjPrestadorLote) . '</Cnpj></CpfCnpj>';
@@ -261,19 +289,21 @@ class PortoSeguro
 
         $x .= '</Tomador>';
 
-            if ($reg !== '') {
+        if ($reg !== '') {
             $x .= '<RegimeEspecialTributacao>' . $this->xmlEscape($reg) . '</RegimeEspecialTributacao>';
-            }
+        }
 
         $x .= $this->tagIf('OptanteSimplesNacional', $optanteSimplesNacional);
 
-$inc = $this->normalizeIncentivoFiscal($incentivoFiscal);
-if ($inc !== '') {
-    $x .= '<IncentivoFiscal>' . $this->xmlEscape($inc) . '</IncentivoFiscal>';
-}
+        $inc = $this->normalizeIncentivoFiscal($incentivoFiscal);
+        if ($inc !== '') {
+            $x .= '<IncentivoFiscal>' . $this->xmlEscape($inc) . '</IncentivoFiscal>';
+        }
 
-        $x .= $this->tagIf('IncentivoFiscal', $incentivoFiscal);
-
+        $inc = $this->normalizeIncentivoFiscal($rps['incentivoFiscal'] ?? null);
+        if ($inc !== '') {
+            $x .= '<IncentivoFiscal>' . $this->xmlEscape($inc) . '</IncentivoFiscal>';
+        }
         $x .= '</InfDeclaracaoPrestacaoServico>';
         $x .= '</Rps>';
 
@@ -401,45 +431,44 @@ if ($inc !== '') {
     }
 
     private function normalizeRegimeEspecialTributacao($v): string
-{
-    $vv = trim((string)$v);
+    {
+        $vv = trim((string)$v);
 
-    // Se vier vazio ou "0", trate como "não informar"
-    if ($vv === '' || $vv === '0') {
+        // Se vier vazio ou "0", trate como "não informar"
+        if ($vv === '' || $vv === '0') {
+            return '';
+        }
+
+        // Normaliza só dígitos
+        $vv = preg_replace('/\D+/', '', $vv);
+
+        // Conjunto mais comum aceito (ABRASF/GestãoISS):
+        // 1..6 (algumas cidades têm 7). Vamos aceitar 1..7 para não travar.
+        if ($vv !== '' && (int)$vv >= 1 && (int)$vv <= 7) {
+            return $vv;
+        }
+
+        // Se estiver fora do range, melhor não mandar (evita erro de schema)
         return '';
     }
+    private function normalizeIncentivoFiscal($v): string
+    {
+        $vv = trim((string)$v);
 
-    // Normaliza só dígitos
-    $vv = preg_replace('/\D+/', '', $vv);
+        // 0 ou vazio => NÃO INFORMAR (ou você pode preferir retornar '2')
+        if ($vv === '' || $vv === '0') {
+            return '2'; // padrão: Não
+            // ou: return ''; // se preferir omitir a tag
+        }
 
-    // Conjunto mais comum aceito (ABRASF/GestãoISS):
-    // 1..6 (algumas cidades têm 7). Vamos aceitar 1..7 para não travar.
-    if ($vv !== '' && (int)$vv >= 1 && (int)$vv <= 7) {
-        return $vv;
+        $vv = preg_replace('/\D+/', '', $vv);
+
+        // Só aceita 1 ou 2
+        if ($vv === '1' || $vv === '2') {
+            return $vv;
+        }
+
+        // fallback: melhor padronizar para "Não"
+        return '2';
     }
-
-    // Se estiver fora do range, melhor não mandar (evita erro de schema)
-    return '';
-}
-private function normalizeIncentivoFiscal($v): string
-{
-    $vv = trim((string)$v);
-
-    // 0 ou vazio => NÃO INFORMAR (ou você pode preferir retornar '2')
-    if ($vv === '' || $vv === '0') {
-        return '2'; // padrão: Não
-        // ou: return ''; // se preferir omitir a tag
-    }
-
-    $vv = preg_replace('/\D+/', '', $vv);
-
-    // Só aceita 1 ou 2
-    if ($vv === '1' || $vv === '2') {
-        return $vv;
-    }
-
-    // fallback: melhor padronizar para "Não"
-    return '2';
-}
-
 }
