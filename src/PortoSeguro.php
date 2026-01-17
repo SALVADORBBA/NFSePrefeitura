@@ -4,7 +4,20 @@ namespace NFSePrefeitura\NFSe;
 use SoapClient;
 use SoapFault;
 use Exception;
-
+/**
+ * Classe PortoSeguro - Implementação do padrão ABRASF v2.02 para a Prefeitura de Porto Seguro - BA'
+ * Autor: Rubens dos Santos
+ * Esta classe faz parte da biblioteca NFSePrefeituras para integração com o padrão ABRASF versão 2.02.
+ *
+ * Observações:
+ * - O XML gerado segue rigorosamente o layout ABRASF v2.02.
+ * - Os namespaces utilizados são:
+ *   - xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ *   - xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+ *   - xmlns="http://www.abrasf.org.br/nfse.xsd"
+ * - O método gerarXmlLoteRps NÃO inclui tags de assinatura digital, deixando o XML pronto para ser assinado externamente.
+ * - Para detalhes do layout, consulte o Manual de Integração ABRASF v2.02.
+ */
 class PortoSeguro
 {
     private const WSDL = 'https://portoseguroba.gestaoiss.com.br/ws/nfse.asmx?WSDL';
@@ -95,11 +108,11 @@ class PortoSeguro
             $xml .= '<ValorIss>' . number_format($rps['valorIss'], 2, '.', '') . '</ValorIss>';
             $xml .= '<Aliquota>' . number_format($rps['aliquota'], 4, '.', '') . '</Aliquota>';
             $xml .= '</Valores>';
-            $xml .= '<IssRetido>' . $rps['issRetido'] . '</IssRetido>';
-            $xml .= '<ItemListaServico>' . $rps['itemListaServico'] . '</ItemListaServico>';
-            $xml .= '<Discriminacao>' . htmlspecialchars($rps['discriminacao'], ENT_XML1) . '</Discriminacao>';
-            $xml .= '<CodigoMunicipio>' . $rps['codigoMunicipio'] . '</CodigoMunicipio>';
-            $xml .= '<ExigibilidadeISS>' . $rps['exigibilidadeISS'] . '</ExigibilidadeISS>';
+           $xml .= '<IssRetido>' . $rps['issRetido'] . '</IssRetido>';
+$xml .= '<ItemListaServico>' . $rps['itemListaServico'] . '</ItemListaServico>';
+$xml .= '<Discriminacao>' . htmlspecialchars($rps['discriminacao'], ENT_XML1) . '</Discriminacao>';
+$xml .= '<CodigoMunicipio>' . $rps['codigoMunicipio'] . '</CodigoMunicipio>';
+$xml .= '<ExigibilidadeISS>' . $rps['exigibilidadeISS'] . '</ExigibilidadeISS>';
             $xml .= '</Servico>';
             $xml .= '<Prestador>';
             $xml .= '<CpfCnpj><Cnpj>' . $dados['cnpjPrestador'] . '</Cnpj></CpfCnpj>';

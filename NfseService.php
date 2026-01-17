@@ -95,81 +95,142 @@ class NfseService
     /**
      * Processa o envio de um lote de RPS
      */
-    public function processar()
+    public function processar($key)
     {
-        $certPath =  'app/certificado/1/6968c3b3791e6_695fa57fadf87_quimica.pfx';
-        $certPassword =  'baby7902';
-        $wsdl = $this->wsdl;
 
-       $dados = [
-    'lote_id' => 'Lote532526430004311001133',
-    'numeroLote' => '133',
-    'cnpjPrestador' => '12345678912345',
-    'inscricaoMunicipal' => '1234',
-    'quantidadeRps' => 1,
+
+            $nfse = NfseRps::find($key);
+            $prestador= $nfse->nfse_emitente;
+            $tomador= $nfse->tomador;
+            $servicos = NfseRpsServico::where('nfse_rps_id', '=',$nfse->id)->get();
+            $certPath =  $prestador->cert_pfx_blob;
+            $certPassword =  $prestador->cert_senha_plain;
+            $wsdl = $this->wsdl;
+
+
+
+$rpsArray = [];
+
+$rpsArray[] = [
+    'numero' => $nfse->id,
+    'serie'  => 'A',
+    'tipo'   => 1,
+    'data'   => date('Y-m-d'),
+];
+
+if (empty($rpsArray)) {
+    throw new Exception('Lote NFSe deve conter ao menos um RPS.');
+}
+
+$quantidadeRps = count($rpsArray);
+ 
+ $servicosArray = [];
+
+$servicosArray = [];
+
+foreach ($servicos as $servico) {
+ 
+    // Remove acentos + normaliza texto
+    $discriminacao =  $this->removerAcentos($servico->discriminacao);
+
+    // Remove quebras excessivas e caracteres de controle
+    $discriminacao = preg_replace('/[\r\n]+/', ' ', $discriminacao);
+    $discriminacao = trim($discriminacao);
+
+    $servicosArray[] = [
+        'valorServicos' => (float) $servico->valor_servicos,
+        'valorIss'      => (float) $servico->valor_iss,
+        'aliquota'      => (float) $servico->aliquota,
+
+        // ABRASF: somente 0 ou 1
+    'issRetido' => ((int) $servico->iss_retido === 1) ? 1 : 2,
+
+      'itemListaServico' => $nfse->itemListaServico,
+        'codigoCnae'       => $prestador->codigocnae,
+
+        'discriminacao' => $discriminacao,
+
+        'codigoMunicipio'  => $servico->codigo_municipio,
+        'exigibilidadeISS' => $servico->exigibilidade_iss,
+    ];
+}
+
+ $dados = [
+    'lote_id' => 'Lote' . $nfse->id,
+
+    // ===== LOTE =====
+    'numeroLote'         => (int) $nfse->id,
+    'cnpjPrestador'      => preg_replace('/\D/', '', $prestador->cnpj),
+    'inscricaoMunicipal' => $prestador->inscricao_municipal,
+    'quantidadeRps'      => $quantidadeRps,
+
+    // ===== RPS =====
     'rps' => [
         [
-            'inf_id' => 'Rps13331',
+            'inf_id' => 'RPS' . $nfse->id,
+
             'infRps' => [
-                'numero' => '133',
-                'serie' => '3',
-                'tipo' => '1',
-                'dataEmissao' => '0001-01-01',
+                'numero'      => $nfse->id,
+                'serie'       => 'A',
+                'tipo'        => 1,
+                'dataEmissao' => date('Y-m-d\TH:i:s'),
             ],
-            'competencia' => '2014-03-17',
-            'valorServicos' => 400.00,
-            'valorIss' => 8.00,
-            'aliquota' => 0.0200,
-            'issRetido' => 1,
-            'itemListaServico' => '1401',
-            'discriminacao' => 'Discriminacao do servico',
-            'codigoMunicipio' => '3100401',
-            'exigibilidadeISS' => '3',
-            'regimeEspecialTributacao' => '1',
-            'optanteSimplesNacional' => '2',
-            'incentivoFiscal' => '2',
+
+            'competencia' => date('Y-m-01'),
+
+            // 🔥 SERVIÇOS REAIS DO BANCO
+            'servicos' => $servicosArray,
+
+            // ===== REGIME =====
+            'regimeEspecialTributacao' =>$prestador->regimeEspecialTributacao,
+            'optanteSimplesNacional'   =>$prestador->optanteSimplesNacional,
+            'incentivoFiscal'          =>$prestador->incentivoFiscal,
+
+            // ===== TOMADOR =====
             'tomador' => [
-                'cpfCnpj' => '12345678912345',
-                'inscricaoMunicipal' => '1234',
-                'razaoSocial' => 'TOMADOR',
+                'cpfCnpj'    => $tomador->cnpj,
+                'razaoSocial'=> 'TOMADOR',
+
                 'endereco' => [
-                    'logradouro' => 'TESTE',
-                    'numero' => '441',
-                    'bairro' => 'TESTE',
-                    'codigoMunicipio' => '3100401',
-                    'uf' => 'MG',
-                    'cep' => '35438000',
+                    'logradouro'     =>  $tomador->logradouro,
+                    'numero'          =>  $tomador->numero,
+                    'bairro'          =>  $tomador->bairro,
+                    'codigoMunicipio' =>  $tomador->codigoMunicipio,
+                    'uf'              =>  $tomador->uf,
+                    'cep'             =>  $tomador->cep,
                 ],
-                'telefone' => '3433333333',
-                'email' => 'teste@dominiodoemail.com',
+
+                'telefone' => $tomador->fone,
+                'email'    => $tomador->email,
             ],
         ],
     ],
 ];
+
 
 $portoSeguro = new PortoSeguro($certPath, $certPassword);
 $xml = $portoSeguro->gerarXmlLoteRps($dados);
 
 // O $xml agora contém o XML completo, sem as tags de assinatura.
         self::salvar("02_inicial.xml", $xml);
-        dd('XML Inicial');
- exit;
+
         // 2. Assinar o XML usando NFSeSigner
         $xmlLoteAssinado = NFSeSigner::sign(
             $xml,
             $certPath,
-            $certPass,
+            $certPassword,
             "InfDeclaracaoPrestacaoServico"
         );
         self::salvar("02_xmlLoteAssinado.xml", $xmlLoteAssinado);
 
- 
 
         // 3. Enviar o XML assinado
       $resposta = $this->enviar($xmlLoteAssinado, 'RecepcionarLoteRps');
  
             self::salvar("03_resposta.xml",$resposta->outputXML);
 
+         dd('XML assinado');
+ exit;
 
 
             return    $resposta;
@@ -218,79 +279,31 @@ $xml = $portoSeguro->gerarXmlLoteRps($dados);
     }
 
 public static function gerarXmlLoteRps(array $dados): string
-{
-    // Gera o XML conforme padrão ABRASF, incluindo namespaces corretos
-    $xml  = '<?xml version="1.0" encoding="UTF-8"?>';
-    $xml .= '<EnviarLoteRpsEnvio xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.abrasf.org.br/nfse.xsd">';
-    $xml .= '<LoteRps Id="' . $dados['lote_id'] . '" versao="2.02">';
-    $xml .= '<NumeroLote>' . $dados['numeroLote'] . '</NumeroLote>';
-    $xml .= '<CpfCnpj><Cnpj>' . $dados['cnpjPrestador'] . '</Cnpj></CpfCnpj>';
-    $xml .= '<InscricaoMunicipal>' . $dados['inscricaoMunicipal'] . '</InscricaoMunicipal>';
-    $xml .= '<QuantidadeRps>' . $dados['quantidadeRps'] . '</QuantidadeRps>';
-    $xml .= '<ListaRps>';
-
-    foreach ($dados['rps'] as $rps) {
-        $dataEmissao = substr($rps['infRps']['dataEmissao'], 0, 10);
-        $xml .= '<Rps>';
-        $xml .= '<InfDeclaracaoPrestacaoServico Id="' . $rps['inf_id'] . '">';
-        $xml .= '<Rps>';
-        $xml .= '<IdentificacaoRps>';
-        $xml .= '<Numero>' . $rps['infRps']['numero'] . '</Numero>';
-        $xml .= '<Serie>' . $rps['infRps']['serie'] . '</Serie>';
-        $xml .= '<Tipo>' . $rps['infRps']['tipo'] . '</Tipo>';
-        $xml .= '</IdentificacaoRps>';
-        $xml .= '<DataEmissao>' . $dataEmissao . '</DataEmissao>';
-        $xml .= '<Status>1</Status>';
-        $xml .= '</Rps>';
-        $xml .= '<Competencia>' . $rps['competencia'] . '</Competencia>';
-        $xml .= '<Servico>';
-        $xml .= '<Valores>';
-        $xml .= '<ValorServicos>' . number_format($rps['valorServicos'], 2, '.', '') . '</ValorServicos>';
-        $xml .= '<ValorIss>' . number_format($rps['valorIss'], 2, '.', '') . '</ValorIss>';
-        $xml .= '<Aliquota>' . number_format($rps['aliquota'], 4, '.', '') . '</Aliquota>';
-        $xml .= '</Valores>';
-        $xml .= '<IssRetido>' . $rps['issRetido'] . '</IssRetido>';
-        $xml .= '<ItemListaServico>' . $rps['itemListaServico'] . '</ItemListaServico>';
-        $xml .= '<Discriminacao>' . htmlspecialchars($rps['discriminacao'], ENT_XML1) . '</Discriminacao>';
-        $xml .= '<CodigoMunicipio>' . $rps['codigoMunicipio'] . '</CodigoMunicipio>';
-        $xml .= '<ExigibilidadeISS>' . $rps['exigibilidadeISS'] . '</ExigibilidadeISS>';
-        $xml .= '</Servico>';
-        $xml .= '<Prestador>';
-        $xml .= '<CpfCnpj><Cnpj>' . $dados['cnpjPrestador'] . '</Cnpj></CpfCnpj>';
-        $xml .= '<InscricaoMunicipal>' . $dados['inscricaoMunicipal'] . '</InscricaoMunicipal>';
-        $xml .= '</Prestador>';
-        $xml .= '<Tomador>';
-        $xml .= '<IdentificacaoTomador>';
-        $xml .= '<CpfCnpj>';
-        $xml .= '<Cnpj>' . $rps['tomador']['cpfCnpj'] . '</Cnpj>';
-        $xml .= '</CpfCnpj>';
-        $xml .= '<InscricaoMunicipal>' . $rps['tomador']['inscricaoMunicipal'] . '</InscricaoMunicipal>';
-        $xml .= '</IdentificacaoTomador>';
-        $xml .= '<RazaoSocial>' . htmlspecialchars($rps['tomador']['razaoSocial'], ENT_XML1) . '</RazaoSocial>';
-        $xml .= '<Endereco>';
-        $xml .= '<Endereco>' . htmlspecialchars($rps['tomador']['endereco']['logradouro'], ENT_XML1) . '</Endereco>';
-        $xml .= '<Numero>' . $rps['tomador']['endereco']['numero'] . '</Numero>';
-        $xml .= '<Bairro>' . htmlspecialchars($rps['tomador']['endereco']['bairro'], ENT_XML1) . '</Bairro>';
-        $xml .= '<CodigoMunicipio>' . $rps['tomador']['endereco']['codigoMunicipio'] . '</CodigoMunicipio>';
-        $xml .= '<Uf>' . $rps['tomador']['endereco']['uf'] . '</Uf>';
-        $xml .= '<Cep>' . $rps['tomador']['endereco']['cep'] . '</Cep>';
-        $xml .= '</Endereco>';
-        $xml .= '<Contato>';
-        $xml .= '<Telefone>' . $rps['tomador']['telefone'] . '</Telefone>';
-        $xml .= '<Email>' . htmlspecialchars($rps['tomador']['email'], ENT_XML1) . '</Email>';
-        $xml .= '</Contato>';
-        $xml .= '</Tomador>';
-        $xml .= '<RegimeEspecialTributacao>' . $rps['regimeEspecialTributacao'] . '</RegimeEspecialTributacao>';
-        $xml .= '<OptanteSimplesNacional>' . $rps['optanteSimplesNacional'] . '</OptanteSimplesNacional>';
-        $xml .= '<IncentivoFiscal>' . $rps['incentivoFiscal'] . '</IncentivoFiscal>';
-        $xml .= '</InfDeclaracaoPrestacaoServico>';
-        $xml .= '</Rps>';
+    {
+        // Chama o método estático da classe PortoSeguro
+        return PortoSeguro::gerarXmlLoteRps($dados);
     }
 
-    $xml .= '</ListaRps>';
-    $xml .= '</LoteRps>';
-    $xml .= '</EnviarLoteRpsEnvio>';
 
-    return $xml;
+    private  function removerAcentos($texto)
+{
+    $texto = mb_convert_encoding($texto, 'UTF-8', 'UTF-8');
+
+    $mapa = [
+        'á'=>'a','à'=>'a','ã'=>'a','â'=>'a','ä'=>'a',
+        'é'=>'e','è'=>'e','ê'=>'e','ë'=>'e',
+        'í'=>'i','ì'=>'i','î'=>'i','ï'=>'i',
+        'ó'=>'o','ò'=>'o','õ'=>'o','ô'=>'o','ö'=>'o',
+        'ú'=>'u','ù'=>'u','û'=>'u','ü'=>'u',
+        'ç'=>'c',
+        'Á'=>'A','À'=>'A','Ã'=>'A','Â'=>'A','Ä'=>'A',
+        'É'=>'E','È'=>'E','Ê'=>'E','Ë'=>'E',
+        'Í'=>'I','Ì'=>'I','Î'=>'I','Ï'=>'I',
+        'Ó'=>'O','Ò'=>'O','Õ'=>'O','Ô'=>'O','Ö'=>'O',
+        'Ú'=>'U','Ù'=>'U','Û'=>'U','Ü'=>'U',
+        'Ç'=>'C',
+    ];
+
+    return strtr($texto, $mapa);
 }
 }
