@@ -198,6 +198,7 @@ class PortoSeguro
 
         $cnpjPrestadorLote = $this->onlyDigits((string)($loteDados['cnpjPrestador'] ?? ''));
         $inscMunPrestador  = (string)($loteDados['inscricaoMunicipal'] ?? '');
+        $reg = $this->normalizeRegimeEspecialTributacao($regimeEspecialTributacao);
 
         $x  = '<Rps>';
         $x .= '<InfDeclaracaoPrestacaoServico Id="' . $this->xmlEscape($infId) . '">';
@@ -260,7 +261,10 @@ class PortoSeguro
 
         $x .= '</Tomador>';
 
-        $x .= $this->tagIf('RegimeEspecialTributacao', $regimeEspecialTributacao);
+            if ($reg !== '') {
+            $x .= '<RegimeEspecialTributacao>' . $this->xmlEscape($reg) . '</RegimeEspecialTributacao>';
+            }
+
         $x .= $this->tagIf('OptanteSimplesNacional', $optanteSimplesNacional);
         $x .= $this->tagIf('IncentivoFiscal', $incentivoFiscal);
 
@@ -389,4 +393,27 @@ class PortoSeguro
         $dt = new DateTime($raw, $tz);
         return $dt->format('Y-m-d');
     }
+
+    private function normalizeRegimeEspecialTributacao($v): string
+{
+    $vv = trim((string)$v);
+
+    // Se vier vazio ou "0", trate como "não informar"
+    if ($vv === '' || $vv === '0') {
+        return '';
+    }
+
+    // Normaliza só dígitos
+    $vv = preg_replace('/\D+/', '', $vv);
+
+    // Conjunto mais comum aceito (ABRASF/GestãoISS):
+    // 1..6 (algumas cidades têm 7). Vamos aceitar 1..7 para não travar.
+    if ($vv !== '' && (int)$vv >= 1 && (int)$vv <= 7) {
+        return $vv;
+    }
+
+    // Se estiver fora do range, melhor não mandar (evita erro de schema)
+    return '';
+}
+
 }
