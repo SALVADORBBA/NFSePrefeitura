@@ -179,8 +179,12 @@ class PortoSeguro
         $tipo   = $this->required($infRps, 'tipo');
 
         // DataEmissao: muitos provedores exigem DATETIME (não só date)
-        $dataEmissaoRaw = (string)($infRps['dataEmissao'] ?? '');
-        $dataEmissao    = $this->normalizeDateTime($dataEmissaoRaw, true);
+        $dataEmissaoRaw = (string)($rps['infRps']['dataEmissao'] ?? '');
+        $dataEmissao = '';
+        if ($dataEmissaoRaw !== '') {
+            $dt = new DateTime($dataEmissaoRaw);
+            $dataEmissao = $dt->format('Y-m-d\TH:i:s');
+        }
 
 
 
@@ -246,6 +250,9 @@ class PortoSeguro
 
         // Prestador do lote
         $cnpjPrestador      = $this->onlyDigits((string)($loteDados['cnpjPrestador'] ?? ''));
+// ALTERAÇÃO: garantir que o CNPJ seja sempre string e apenas dígitos
+// Se quiser alterar o valor, faça aqui:
+// Exemplo: $cnpjPrestador = '12345678000199';
         $inscricaoMunicipal = (string)($loteDados['inscricaoMunicipal'] ?? '');
        $dataEmissao = $this->forceTimezone((string)($rps['infRps']['dataEmissao'] ?? ''));
 
