@@ -1,0 +1,71 @@
+<CancelarNfseEnvio xmlns="http://www.abrasf.org.br/ABRASF/arquivos/nfse.xsd" xmlns:ns2="http://www.w3.org/2000/09/xmldsig#">
+  <Pedido>
+    <InfPedidoCancelamento Id="3510">
+      <IdentificacaoNfse>
+        <Numero>3510</Numero>
+        <Cnpj>08241747000658</Cnpj>
+        <InscricaoMunicipal>1694480</InscricaoMunicipal>
+        <CodigoMunicipio>2408102</CodigoMunicipio>
+      </IdentificacaoNfse>
+      <CodigoCancelamento>3</CodigoCancelamento>
+    </InfPedidoCancelamento>
+    <Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
+      <SignedInfo>
+        <CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315" />
+        <SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1" />
+        <Reference URI="#3510">
+          <Transforms>
+            <Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature" />
+            <Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315" />
+          </Transforms>
+          <DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1" />
+          <DigestValue>b/zQMOvnJEnORuLZ6lCnvEMdTRU=</DigestValue>
+        </Reference>
+      </SignedInfo>
+      <SignatureValue>nZHIJAjj/eSpoJbDvYxh8KKgTAkeGLVvaynRPIUldMTFLBcCEgGVwb4otZfdJlbPaZ4+8u3PMqvl
+zxMGHeM6p85T5d8fTRIL7rezvEcwgxsY1qtwYB0SUkhiVWT79EUJa3nIQrsLH1+Rdmx9Q7Is+hxf
+d3GKIlwIXebQA4otMBla3TS+inXxHgbqhIVR5XEtsYnpubplTx32Yu9ZQ1oWl3LJ/Yut5bVIsX4U
+bB8LjzJ2+tUoBTPnhOMijsnnm/f4DK0xLBJkNxgu7dl+hbE60vu4xSM+RnHVaHIuDLNukto1AptK
+9vcS/DZ8ISW4/YlT7J6CDqY+/xOyu/+H/cjqNQ==</SignatureValue>
+      <KeyInfo>
+        <X509Data>
+          <X509Certificate>MIIHwTCCBamgAwIBAgIQMjAxMjA5MDUxNDU1NTM0OTANBgkqhkiG9w0BAQsFADCBijELMAkGA1UE
+BhMCQlIxEzARBgNVBAoTCklDUC1CcmFzaWwxNjA0BgNVBAsTLVNlY3JldGFyaWEgZGEgUmVjZWl0
+YSBGZWRlcmFsIGRvIEJyYXNpbCAtIFJGQjEuMCwGA1UEAxMlQXV0b3JpZGFkZSBDZXJ0aWZpY2Fk
+b3JhIFNFUlBST1JGQiB2MzAeFw0xMjA5MDUxODQxMzFaFw0xMzA5MDUxODM4MzRaMIIBBDELMAkG
+A1UEBhMCQlIxEzARBgNVBAoTCklDUC1CcmFzaWwxNjA0BgNVBAsTLVNlY3JldGFyaWEgZGEgUmVj
+ZWl0YSBGZWRlcmFsIGRvIEJyYXNpbCAtIFJGQjEVMBMGA1UECxMMQ09OVFJJQlVJTlRFMREwDwYD
+VQQLEwhBUlNFUlBSTzEWMBQGA1UECxMNUkZCIGUtQ05QSiBBMTEOMAwGA1UEBxMFTkFUQUwxCzAJ
+BgNVBAgTAlJOMUkwRwYDVQQDE0BVTklNRUQgTkFUQUwgU09DSUVEQURFIENPT1BFUkFUSVZBIERF
+IFRSQUJBTEhPIE1FOjA4MzgwNzAxMDAwMTA1MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKC
+AQEAn3HqXno97L+tddJPmj10iCMocC+gwN/IY0yV5XxLdtV67upIIFYLsCvwxR3guNFv6M8CHM4v
+dasixN2GzDobL8PbGr194ZJEXh9cnMEfcj82DnRJS+8jOfbw4AhOMsxGYrDoIymb1Lq+GCTG9bG0
+LwLGnJ+ynVKwExBoeVJRHKJL9gOas51mAS3gxOwaDx7Tm5HSMvYuILXd0Wm1aFW63AdhdOXQfxyZ
+J8Y/Gzl8BIrptOK3pCbt578mUH2mc8UJDu7nkHnAKq9pQ1zy+donNpQdvkcVihAcNOLewbhD8y+r
+4mQUg7YjeadnH/2AMGihV5kC104znYSd5bj06h7XpQIDAQABo4ICpDCCAqAwDAYDVR0TAQH/BAIw
+ADAfBgNVHSMEGDAWgBSxZ7Ed5xyud0IUrX+eCQ7mhbC3rjAOBgNVHQ8BAf8EBAMCBeAwYAYDVR0g
+BFkwVzBVBgZgTAECAQowSzBJBggrBgEFBQcCARY9aHR0cHM6Ly9jY2Quc2VycHJvLmdvdi5ici9h
+Y3NlcnByb3JmYi9kb2NzL2RwY2Fjc2VycHJvcmZiLnBkZjCBxwYDVR0RBIG/MIG8oD4GBWBMAQME
+oDUEMzIyMTAxOTQ5MDg2MjY2NTA0MzQxMTQwMTgzODczNjAwMDAwMDAwMDEwNzUwOUlURVBSTqAm
+BgVgTAEDAqAdBBtBTlRPTklPIEZSQU5DSVNDTyBERSBBUkFVSk+gGQYFYEwBAwOgEAQOMDgzODA3
+MDEwMDAxMDWgFwYFYEwBAwegDgQMMDAwMDAwMDAwMDAwgR5yb3NzYW5hbGltYUB1bmltZWRuYXRh
+bC5jb20uYnIwIAYDVR0lAQH/BBYwFAYIKwYBBQUHAwIGCCsGAQUFBwMEMIHABgNVHR8EgbgwgbUw
+NKAyoDCGLmh0dHA6Ly9jY2Quc2VycHJvLmdvdi5ici9sY3IvYWNzZXJwcm9yZmJ2My5jcmwwNaAz
+oDGGL2h0dHA6Ly9jY2QyLnNlcnByby5nb3YuYnIvbGNyL2Fjc2VycHJvcmZidjMuY3JsMEagRKBC
+hkBodHRwOi8vcmVwb3NpdG9yaW8uaWNwYnJhc2lsLmdvdi5ici9sY3Ivc2VycHJvL2Fjc2VycHJv
+cmZidjMuY3JsME4GCCsGAQUFBwEBBEIwQDA+BggrBgEFBQcwAoYyaHR0cDovL2NjZC5zZXJwcm8u
+Z292LmJyL2NhZGVpYXMvYWNzZXJwcm9yZmJ2My5wN2IwDQYJKoZIhvcNAQELBQADggIBAGeuDkPY
+stJdHGiuUljtfrE6Nu6LCAsBbJ4q/PFaKm9e4qlSRyjX97QupYGr2qDhPB1T75SDCvkbt1jNJtwE
+X3Zuk0NnlqOJoPjdE8t1YOLcFVO9HnMr4aMqtFuzy4il/K6Y+lYIh98zkqfsABItwnSxP9zJi9S/
+STAu2AM3CA7aVhNGajRPUFj7LGf2Vb8oQQBuUdIFfVoGjuakFXFOFKwEytVlRkUpoW1vStuwgzX8
+C3j3YjxROdIV6cXBdQimQmPWtmnORkBFrHBZ/PT+Sv4UjKKwWDYvyb8N0VCK0BDVLilqNbhIOZ9W
+VL0T5DcT2sKv5a+aHjEMKOvH/1AQLrUKT4rDqBy8vKgbLvPzSpVfHJN+wtjdlKy6+sSPlq0zvqY2
+0D/i8mx7CWvN6LfGirAlJi+vfLB4sf9/9CucUTtL1Ac8jsW2+FqazIY1qo/yO4mqoQdCzHhTH9ae
+AJdwcCE/ekQeX+WJUV8HuGrzYA5AHKdknPZ3/ytUjoC6MRd2TupNPIbuiHK6zKpBEBF5HztFWMrI
+6/jYBpapMy/Hx4F4y+iVinV3uSZan1J3THjoVLjRttrOU+yjYz+6IXG/w5JwDxGtiI4j/6S4c7TR
+rC1pYw8Yqk7/NvUaOH+MLZPmFuvJvAY1hojJO4b8TaS3fm2vsqALrneDtn+7sbUWBeUS</X509Certificate>
+        </X509Data>
+      </KeyInfo>
+    </Signature>
+  </Pedido>
+</CancelarNfseEnvio>

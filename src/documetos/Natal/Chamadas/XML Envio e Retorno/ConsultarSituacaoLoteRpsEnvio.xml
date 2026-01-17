@@ -1,0 +1,7 @@
+<ConsultarSituacaoLoteRpsEnvio xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.abrasf.org.br/ABRASF/arquivos/nfse.xsd">
+  <Prestador>
+    <Cnpj xmlns="http://www.abrasf.org.br/ABRASF/arquivos/nfse.xsd">08241747000658</Cnpj>
+    <InscricaoMunicipal xmlns="http://www.abrasf.org.br/ABRASF/arquivos/nfse.xsd">1694480</InscricaoMunicipal>
+  </Prestador>
+  <Protocolo>34187909</Protocolo>
+</ConsultarSituacaoLoteRpsEnvio>

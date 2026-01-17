@@ -1,0 +1,19 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsn="https://wsnfsev1homologacao.natal.rn.gov.br:8443">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <wsn:ConsultarSituacaoLoteRpsRequest>
+         <nfseCabecMsg><![CDATA[<?xml version="1.0"?>
+             <cabecalho xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" versao="1" xmlns="http://www.abrasf.org.br/ABRASF/arquivos/nfse.xsd">
+             <versaoDados>1</versaoDados></cabecalho>]]>
+         </nfseCabecMsg>
+         <nfseDadosMsg><![CDATA[<?xml version="1.0"?>
+<ConsultarSituacaoLoteRpsEnvio xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.abrasf.org.br/ABRASF/arquivos/nfse.xsd">
+  <Prestador>
+    <Cnpj>08241747000658</Cnpj>
+    <InscricaoMunicipal>1358286</InscricaoMunicipal>
+  </Prestador>
+  <Protocolo>1694480</Protocolo>
+</ConsultarSituacaoLoteRpsEnvio>]]></nfseDadosMsg>
+      </wsn:ConsultarSituacaoLoteRpsRequest>
+   </soapenv:Body>
+</soapenv:Envelope>

@@ -1,0 +1,9 @@
+<ConsultarLoteRpsResposta xmlns="http://www.abrasf.org.br/ABRASF/arquivos/nfse.xsd">
+  <ListaMensagemRetorno xmlns="http://www.abrasf.org.br/ABRASF/arquivos/nfse.xsd">
+    <MensagemRetorno>
+      <Codigo>E180</Codigo>
+      <Mensagem>O lote foi recebido mas não foi processado.</Mensagem>
+      <Correcao>Aguarde para fazer a consulta novamente.</Correcao>
+    </MensagemRetorno>
+  </ListaMensagemRetorno>
+</ConsultarLoteRpsResposta>
