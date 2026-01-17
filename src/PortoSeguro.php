@@ -182,6 +182,15 @@ class PortoSeguro
         $dataEmissaoRaw = (string)($infRps['dataEmissao'] ?? '');
         $dataEmissao    = $this->normalizeDateTime($dataEmissaoRaw, true);
 
+
+
+
+
+
+
+
+
+        
         // Competencia normalmente é date (YYYY-MM-DD), mas aceitam datetime em alguns. Vamos normalizar pra date.
         $competenciaRaw = (string)($rps['competencia'] ?? '');
         $competencia    = $this->normalizeDate($competenciaRaw, true);
@@ -238,6 +247,7 @@ class PortoSeguro
         // Prestador do lote
         $cnpjPrestador      = $this->onlyDigits((string)($loteDados['cnpjPrestador'] ?? ''));
         $inscricaoMunicipal = (string)($loteDados['inscricaoMunicipal'] ?? '');
+       $dataEmissao = $this->forceTimezone((string)($rps['infRps']['dataEmissao'] ?? ''));
 
         $x  = '<Rps>';
         $x .= '<InfDeclaracaoPrestacaoServico Id="' . $this->xmlEscape($infId) . '">';
@@ -248,7 +258,7 @@ class PortoSeguro
         $x .= '<Serie>' . $this->xmlEscape($serie) . '</Serie>';
         $x .= '<Tipo>' . $this->xmlEscape($tipo) . '</Tipo>';
         $x .= '</IdentificacaoRps>';
-        $x .= '<DataEmissao>' . $this->xmlEscape($dataEmissao) . '</DataEmissao>';
+        $x .= '<DataEmissao>' . $dataEmissao . '</DataEmissao>';        
         $x .= '<Status>1</Status>';
         $x .= '</Rps>';
 
@@ -476,4 +486,33 @@ class PortoSeguro
 
         return date('Y-m-d\TH:i:s', $ts);
     }
+
+    private function forceTimezone(string $dt): string
+{
+    $dt = trim($dt);
+
+    if ($dt === '') {
+        throw new Exception('DataEmissao obrigatória.');
+    }
+
+    // já tem timezone (Z ou -03:00)
+    if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+\-]\d{2}:\d{2})$/', $dt)) {
+        return $dt;
+    }
+
+    // sem timezone: adiciona -03:00
+    if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/', $dt)) {
+        return $dt . '-03:00';
+    }
+
+    // veio só date: completa
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dt)) {
+        return $dt . 'T00:00:00-03:00';
+    }
+
+    // fallback: tenta parsear
+    $d = new DateTime($dt, new DateTimeZone('America/Sao_Paulo'));
+    return $d->format('Y-m-d\TH:i:sP');
+}
+
 }
