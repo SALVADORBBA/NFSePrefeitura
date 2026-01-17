@@ -182,7 +182,7 @@ class PortoSeguro
         $dataEmissaoRaw = (string)($rps['infRps']['dataEmissao'] ?? '');
         $dataEmissao = '';
         if ($dataEmissaoRaw !== '') {
-            $dt = new DateTime($dataEmissaoRaw);
+            $dt = new \DateTime($dataEmissaoRaw);
             $dataEmissao = $dt->format('Y-m-d\TH:i:s');
         }
 
