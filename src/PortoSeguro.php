@@ -183,7 +183,7 @@ class PortoSeguro
         $dataEmissao = '';
         if ($dataEmissaoRaw !== '') {
             $dt = new \DateTime($dataEmissaoRaw);
-            $dataEmissao = $dt->format('Y-m-d\TH:i:s'); // Formato completo conforme ABRASF
+            $dataEmissao = $dt->format('Ymd'); // Formato completo conforme ABRASF
         }
 
 
