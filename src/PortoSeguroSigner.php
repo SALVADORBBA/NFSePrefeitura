@@ -1,4 +1,7 @@
-namespace NotasFiscais\Abrasf;
+<?php
+
+
+namespace NFSePrefeitura\NFSe;
 
 use NFePHP\Common\Certificate;
 use NFePHP\Common\Signer;
