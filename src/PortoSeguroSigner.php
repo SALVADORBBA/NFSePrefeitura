@@ -55,6 +55,9 @@ class PortoSeguroSigner
             ]
         );
 
+        // Remove declaração XML do nó assinado
+        $signedXml = preg_replace('/<\?xml.*?\?>/', '', $signedXml);
+
         $signedDom = new \DOMDocument();
         $signedDom->preserveWhiteSpace = false;
         $signedDom->formatOutput = false;
