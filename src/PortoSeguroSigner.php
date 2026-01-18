@@ -19,18 +19,20 @@ class PortoSeguroSigner
 
     public function signRps($xml)
     {
-        // Extrai o Id do InfDeclaracaoPrestacaoServico
         $dom = new \DOMDocument();
+        $dom->preserveWhiteSpace = false;
+        $dom->formatOutput = false;
         $dom->loadXML($xml);
+
         $xpath = new \DOMXPath($dom);
         $xpath->registerNamespace('ns', 'http://www.abrasf.org.br/nfse.xsd');
         $infNode = $xpath->query('//ns:InfDeclaracaoPrestacaoServico')->item(0);
         $id = $infNode->getAttribute('Id');
 
-        // Assina o nó InfDeclaracaoPrestacaoServico
-        $signedXml = Signer::sign(
+        // Gere a assinatura digital do nó InfDeclaracaoPrestacaoServico
+        $signedXml = \NFePHP\Common\Signer::sign(
             $this->certificate,
-            $xml,
+            $dom->saveXML($infNode),
             'InfDeclaracaoPrestacaoServico',
             'Id',
             $id,
@@ -45,6 +47,14 @@ class PortoSeguroSigner
             ]
         );
 
-        return $signedXml;
+        // Substitua o nó original pelo nó assinado
+        $signedDom = new \DOMDocument();
+        $signedDom->loadXML($signedXml);
+        $signedInfNode = $signedDom->documentElement;
+
+        $importedNode = $dom->importNode($signedInfNode, true);
+        $infNode->parentNode->replaceChild($importedNode, $infNode);
+
+        return $dom->saveXML();
     }
 }
