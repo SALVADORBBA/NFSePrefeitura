@@ -63,8 +63,7 @@ class PortoSeguro
         try {
             return $client->__soapCall('RecepcionarLoteRps', [[
                 'nfseCabecMsg' => $cabec,
-               // 'nfseDadosMsg' => $xmlDados,
-                   'nfseDadosMsg' => htmlspecialchars($xmlDados, ENT_XML1 | ENT_QUOTES, 'UTF-8')
+                'nfseDadosMsg' => $xmlDados,
             ]]);
         } catch (SoapFault $e) {
             throw new Exception(
@@ -146,7 +145,7 @@ class PortoSeguro
         $aliquota         = $this->aliquotaToDecimal4($rps['aliquota'] ?? 0); // 2 => 0.0200
 
         $issRetido        = $this->enum12($rps['issRetido'] ?? null, "IssRetido (RPS {$infId})");
-        $itemListaServico = $this->normalizeItemListaServico((string)($rps['itemListaServico'] ?? ''), "ItemListaServico (RPS {$infId})");
+        $itemListaServico =  (string)($rps['itemListaServico'] ?? '');
 
         $discriminacao    = (string)$this->required($rps, 'discriminacao');
         $codigoMunicipio  = $this->normalizeIbge7((string)($rps['codigoMunicipio'] ?? ''), "CodigoMunicipio (RPS {$infId})");
@@ -223,7 +222,7 @@ class PortoSeguro
         $x .= '</Valores>';
 
         $x .= '<IssRetido>'.$this->xmlEscape($issRetido).'</IssRetido>';
-        $x .= '<ItemListaServico>'.$this->xmlEscape($itemListaServico).'</ItemListaServico>';
+        $x .= '<ItemListaServico>' .($itemListaServico).'</ItemListaServico>';
         $x .= $codigoCnae;
         $x .= $codigoTributacaoMun;
 

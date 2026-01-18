@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<EnviarLoteRpsEnvio xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.abrasf.org.br/nfse.xsd">
+	<LoteRps Id="Lote532526430004311001133" versao="2.02">
+		<NumeroLote>133</NumeroLote>
+		<CpfCnpj>
+			<Cnpj>12345678912345</Cnpj>
+		</CpfCnpj>
+		<InscricaoMunicipal>1234</InscricaoMunicipal>
+		<QuantidadeRps>1</QuantidadeRps>
+		<ListaRps>
+			<Rps>
+				<InfDeclaracaoPrestacaoServico Id="Rps13331">
+					<Rps>
+						<IdentificacaoRps>
+							<Numero>133</Numero>
+							<Serie>3</Serie>
+							<Tipo>1</Tipo>
+						</IdentificacaoRps>
+						<DataEmissao>0001-01-01</DataEmissao>
+						<Status>1</Status>
+					</Rps>
+					<Competencia>2014-03-17</Competencia>
+					<Servico>
+						<Valores>
+							<ValorServicos>400.00</ValorServicos>
+							<ValorIss>8.00</ValorIss>
+							<Aliquota>0.0200</Aliquota>
+						</Valores>
+						<IssRetido>1</IssRetido>
+						<ItemListaServico>1401</ItemListaServico>
+						<Discriminacao>Discriminacao do servico</Discriminacao>
+						<CodigoMunicipio>3100401</CodigoMunicipio>
+						<ExigibilidadeISS>3</ExigibilidadeISS>
+					</Servico>
+					<Prestador>
+						<CpfCnpj>
+							<Cnpj>12345678912345</Cnpj>
+						</CpfCnpj>
+						<InscricaoMunicipal>1234</InscricaoMunicipal>
+					</Prestador>
+					<Tomador>
+						<IdentificacaoTomador>
+							<CpfCnpj>
+								<Cnpj>12345678912345</Cnpj>
+							</CpfCnpj>
+							<InscricaoMunicipal>1234</InscricaoMunicipal>
+						</IdentificacaoTomador>
+						<RazaoSocial>TOMADOR</RazaoSocial>
+						<Endereco>
+							<Endereco>TESTE</Endereco>
+							<Numero>441</Numero>
+							<Bairro>TESTE</Bairro>
+							<CodigoMunicipio>3100401</CodigoMunicipio>
+							<Uf>MG</Uf>
+							<Cep>35438000</Cep>
+						</Endereco>
+						<Contato>
+							<Telefone>3433333333</Telefone>
+							<Email>teste@dominiodoemail.com</Email>
+						</Contato>
+					</Tomador>
+					<RegimeEspecialTributacao>1</RegimeEspecialTributacao>
+					<OptanteSimplesNacional>2</OptanteSimplesNacional>
+					<IncentivoFiscal>2</IncentivoFiscal>
+				</InfDeclaracaoPrestacaoServico>
+				<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
+					<SignedInfo>
+						<CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315" />
+						<SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1" />
+						<Reference URI="#Rps13331">
+							<Transforms>
+								<Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature" />
+								<Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315" />
+							</Transforms>
+							<DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1" />
+							<DigestValue>z1PSJj6aq5xKAAUuyjLusPxJpko=</DigestValue>
+						</Reference>
+					</SignedInfo>
+					<SignatureValue>gwxE9B5gt0jONIaC/qgXdJaOlzhA+rQnPExq/5FGPbDp4VSeJFDnUPNbqE0e+UycEzvQb9agt1eoe0GJeRGbEVRrkCd66rzZdE52I95l93CVQtVuqd/wj1Q0D3KL1t8oziNDMyO5iPusfhZqVvHeC0Skj+UF5YzEPd7Eghz0Gm4=</SignatureValue>
+					<KeyInfo>
+						<X509Data>
+							<X509Certificate>MIIC2zCCAkQCCQC22aNn4hoPwTANBgkqhkiG9w0BAQUFADCBsTELMAkGA1UEBhMCQlIxDTALBgNVBAgTBERlbW8xGjAYBgNVBAcTEURlbW9uc3RyYWNhbyBDaXR5MRswGQYDVQQKExJEZW1vbnN0cmFjYW8gTHRkYS4xFTATBgNVBAsTDERlbW9uc3RyYWNhbzEVMBMGA1UEAxMMRGVtb25zdHJhY2FvMSwwKgYJKoZIhvcNAQkBFh1kZW1vbnN0cmFjYW9AZGVtb25zdHJhY2FvLmNvbTAeFw0xMzA3MjIxNDQ0MzRaFw0xODA3MjExNDQ0MzRaMIGxMQswCQYDVQQGEwJCUjENMAsGA1UECBMERGVtbzEaMBgGA1UEBxMRRGVtb25zdHJhY2FvIENpdHkxGzAZBgNVBAoTEkRlbW9uc3RyYWNhbyBMdGRhLjEVMBMGA1UECxMMRGVtb25zdHJhY2FvMRUwEwYDVQQDEwxEZW1vbnN0cmFjYW8xLDAqBgkqhkiG9w0BCQEWHWRlbW9uc3RyYWNhb0BkZW1vbnN0cmFjYW8uY29tMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDNsSbt20+K+yFbh+g6c+gUZjm0GXayYrGMJIv0hoLs1tz2S0ccDtH0gqqnL0EaR2x5oUucWtD6ZYHptizw+hEs2JrcEPQVOdwK0DKtL3grjqMho0Tmo5YfFjiXwC9IPlP3PDwzzCaM8fbamtCc0rJmxyPNtgVJKC0NZiADZNmNjQIDAQABMA0GCSqGSIb3DQEBBQUAA4GBAAHwS5EAEHAA+sWE2bOCZyxR5XKofr5/Ws7hjPDh4BFc8dlrI2/XtJgEFKtXPbZeQFLsYYOHnMOID8quziAx37xArm770As27+gZH8iDU1ztc98bAFnhRMS7tSYQqNhjV17aolYIDeL3F1xb5g0tUZ8W3Au0nxV9UAEegP74Ilp3</X509Certificate>
+						</X509Data>
+					</KeyInfo>
+				</Signature>
+			</Rps>
+		</ListaRps>
+	</LoteRps>
+	<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
+		<SignedInfo>
+			<CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315" />
+			<SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1" />
+			<Reference URI="#Lote532526430004311001133">
+				<Transforms>
+					<Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature" />
+					<Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315" />
+				</Transforms>
+				<DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1" />
+				<DigestValue>hUv137liAjXx82/7BWsCLWNQE84=</DigestValue>
+			</Reference>
+		</SignedInfo>
+		<SignatureValue>Gg1Ec5JH1hU7cl/p5Mb7jA8itNwdRoTxLidtnxdQkigqTxlZBnbUch8pLi007TwU6cJsFY+Avn3eanm6SuNXN/Lf0rn6x+X2njgiPqOM4YxgAym5DAr9DnunCLiahAg3Og9HLpboS/lIFv/Vs8NNzA7RqzZuIbzJQ2Nifh8EJbQ=</SignatureValue>
+		<KeyInfo>
+			<X509Data>
+				<X509Certificate>MIIC2zCCAkQCCQC22aNn4hoPwTANBgkqhkiG9w0BAQUFADCBsTELMAkGA1UEBhMCQlIxDTALBgNVBAgTBERlbW8xGjAYBgNVBAcTEURlbW9uc3RyYWNhbyBDaXR5MRswGQYDVQQKExJEZW1vbnN0cmFjYW8gTHRkYS4xFTATBgNVBAsTDERlbW9uc3RyYWNhbzEVMBMGA1UEAxMMRGVtb25zdHJhY2FvMSwwKgYJKoZIhvcNAQkBFh1kZW1vbnN0cmFjYW9AZGVtb25zdHJhY2FvLmNvbTAeFw0xMzA3MjIxNDQ0MzRaFw0xODA3MjExNDQ0MzRaMIGxMQswCQYDVQQGEwJCUjENMAsGA1UECBMERGVtbzEaMBgGA1UEBxMRRGVtb25zdHJhY2FvIENpdHkxGzAZBgNVBAoTEkRlbW9uc3RyYWNhbyBMdGRhLjEVMBMGA1UECxMMRGVtb25zdHJhY2FvMRUwEwYDVQQDEwxEZW1vbnN0cmFjYW8xLDAqBgkqhkiG9w0BCQEWHWRlbW9uc3RyYWNhb0BkZW1vbnN0cmFjYW8uY29tMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDNsSbt20+K+yFbh+g6c+gUZjm0GXayYrGMJIv0hoLs1tz2S0ccDtH0gqqnL0EaR2x5oUucWtD6ZYHptizw+hEs2JrcEPQVOdwK0DKtL3grjqMho0Tmo5YfFjiXwC9IPlP3PDwzzCaM8fbamtCc0rJmxyPNtgVJKC0NZiADZNmNjQIDAQABMA0GCSqGSIb3DQEBBQUAA4GBAAHwS5EAEHAA+sWE2bOCZyxR5XKofr5/Ws7hjPDh4BFc8dlrI2/XtJgEFKtXPbZeQFLsYYOHnMOID8quziAx37xArm770As27+gZH8iDU1ztc98bAFnhRMS7tSYQqNhjV17aolYIDeL3F1xb5g0tUZ8W3Au0nxV9UAEegP74Ilp3</X509Certificate>
+			</X509Data>
+		</KeyInfo>
+	</Signature>
+</EnviarLoteRpsEnvio>

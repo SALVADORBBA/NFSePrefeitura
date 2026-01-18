@@ -40,56 +40,14 @@ class NfseService
         $this->client = new \SoapClient($this->wsdl, $options);
     }
 
-    /* =========================================================
-     * ASSINATURA (ABRASF)
-     * ========================================================= */
-    public function assinarXml(string $xml, ?string $certPath = null, ?string $certPassword = null, string $tag = 'InfDeclaracaoPrestacaoServico'): string
-    {
-        if (trim($xml) === '') {
-            throw new \InvalidArgumentException('O XML passado para assinatura está vazio.');
-        }
-
-        $certPath = $certPath ?: $this->certPath;
-        $certPassword = $certPassword ?: $this->certPassword;
-
-        if (!$certPath || !file_exists($certPath)) {
-            throw new \InvalidArgumentException('Certificado não encontrado: ' . (string)$certPath);
-        }
-        if ($certPassword === null) {
-            throw new \InvalidArgumentException('Senha do certificado não informada.');
-        }
-
-        $xmlAssinado = NFSeNacionalSigner::assinarDpsXml(
-            $xml,
-            (string)$certPath,
-            (string)$certPassword
-        );
-
-    }
-
-    /* =========================================================
-     * ENVIO SOAP (nfseCabecMsg + nfseDadosMsg)
-     * ========================================================= */
-    public function enviar(string $xmlAssinado, string $metodo, string $versao = '2.02')
-    {
-        $cabecalho = '<cabecalho xmlns="http://www.abrasf.org.br/nfse.xsd" versao="'.$this->xmlEscape($versao).'">'
-                   . '<versaoDados>'.$this->xmlEscape($versao).'</versaoDados>'
-                   . '</cabecalho>';
-
-        $params = [
-            'nfseCabecMsg' => $cabecalho,
-            'nfseDadosMsg' => $xmlAssinado
-        ];
-
-        return $this->client->__soapCall($metodo, [$params]);
-    }
-
+  
+ 
     /* =========================================================
      * PROCESSAR (monta lote -> assina -> envia)
      * ========================================================= */
     public function processar($key)
     {
-        $nfse      = NfseRps::find($key);
+      $nfse      = NfseRps::find($key);
         if (!$nfse) {
             throw new \Exception("NFSe RPS não encontrado. Key: {$key}");
         }
@@ -120,7 +78,7 @@ class NfseService
         $portoSeguro = new PortoSeguro((string)$certPath, (string)$certPassword);
         $xml = $portoSeguro->gerarXmlLoteRps($dados);
         self::salvar("01_inicial.xml", $xml);
-
+ exit;
         // 3) Assina no nível InfDeclaracaoPrestacaoServico
         // $xmlAssinado = NFSeSigner::sign(
         //     $xml,

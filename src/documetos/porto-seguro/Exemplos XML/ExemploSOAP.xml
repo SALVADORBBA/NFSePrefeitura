@@ -1,0 +1,9 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:nfse="http://nfse.abrasf.org.br">
+	<soapenv:Header/>
+	<soapenv:Body>
+		<nfse:GerarNfseRequest>
+			<nfseCabecMsg>&lt;?xml version="1.0" encoding="UTF-8"?&gt;&lt;cabecalho xmlns="http://www.abrasf.org.br/nfse.xsd" versao="2.02"&gt;&lt;versaoDados&gt;2.02&lt;/versaoDados&gt;&lt;/cabecalho&gt;</nfseCabecMsg>
+			<nfseDadosMsg><![CDATA[<?xml version="1.0" encoding="utf-8"?><GerarNfseEnvio xmlns="http://www.abrasf.org.br/nfse.xsd"></GerarNfseEnvio>]]></nfseDadosMsg>
+		</nfse:GerarNfseRequest>
+	</soapenv:Body>
+</soapenv:Envelope>
