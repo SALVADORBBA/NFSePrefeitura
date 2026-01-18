@@ -1,8 +1,5 @@
 <?php
 
-
-namespace NFSePrefeitura\NFSe;
-
 namespace NotasFiscais\Abrasf;
 
 use NFePHP\Common\Certificate;
@@ -10,66 +7,144 @@ use NFePHP\Common\Signer;
 
 class PortoSeguroSigner
 {
+    /** @var \NFePHP\Common\Certificate */
     protected $certificate;
 
-    public function __construct($certPath, $certPassword)
+    public function __construct(string $certPath, string $certPassword)
     {
-        $this->certificate = Certificate::readPfx(file_get_contents($certPath), $certPassword);
-    } 
+        $pfx = file_get_contents($certPath);
+        if ($pfx === false) {
+            throw new \RuntimeException("Não foi possível ler o certificado: {$certPath}");
+        }
 
-    public function signRps($xml)
+        $this->certificate = Certificate::readPfx($pfx, $certPassword);
+    }
+
+    /**
+     * Assina TODOS os RPS do XML (cada InfDeclaracaoPrestacaoServico com @Id),
+     * e posiciona <Signature> dentro de <Rps> como irmão do InfDeclaracaoPrestacaoServico,
+     * conforme o modelo ABRASF (como no seu EnviarLoteRpsEnvio.xml).
+     */
+    public function signRps(string $xml): string
     {
-        $dom = new \DOMDocument();
-        $dom->preserveWhiteSpace = false;
+        // Importante: preservar whitespace para não alterar o conteúdo antes/depois da assinatura
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $dom->preserveWhiteSpace = true;
+        $dom->formatOutput = false;
+
+        if (!$dom->loadXML($xml, LIBXML_NOBLANKS | LIBXML_NOERROR | LIBXML_NOWARNING)) {
+            // Tenta de novo sem LIBXML_NOBLANKS caso o XML tenha formatação específica
+            $dom = new \DOMDocument('1.0', 'UTF-8');
+            $dom->preserveWhiteSpace = true;
+            $dom->formatOutput = false;
+
+            if (!$dom->loadXML($xml)) {
+                throw new \RuntimeException("XML inválido: não foi possível carregar.");
+            }
+        }
+
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('nfse', 'http://www.abrasf.org.br/nfse.xsd');
+
+        /** @var \DOMNodeList $infList */
+        $infList = $xpath->query('//nfse:InfDeclaracaoPrestacaoServico[@Id]');
+        if (!$infList || $infList->length === 0) {
+            throw new \RuntimeException("Nenhum nó InfDeclaracaoPrestacaoServico com atributo Id foi encontrado.");
+        }
+
+        // Vamos assinar um por um, atualizando o XML a cada passo (mais compatível com o Signer)
+        $currentXml = $dom->saveXML($dom->documentElement);
+
+        foreach ($infList as $infNode) {
+            /** @var \DOMElement $infNode */
+            $id = $infNode->getAttribute('Id');
+            if (!$id) {
+                continue;
+            }
+
+            // 1) Assina no XML COMPLETO (evita perder namespaces do contexto)
+            $signed = Signer::sign(
+                $this->certificate,
+                $currentXml,
+                'InfDeclaracaoPrestacaoServico',
+                'Id',
+                $id,
+                [
+                    // Padrão do seu XML modelo: RSA-SHA1 / SHA1 / C14N 20010315
+                    'canonical' => true,
+                    'signatureAlgorithm' => 'http://www.w3.org/2000/09/xmldsig#rsa-sha1',
+                    'digestAlgorithm'    => 'http://www.w3.org/2000/09/xmldsig#sha1',
+                    'transformAlgorithm' => [
+                        'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
+                        'http://www.w3.org/TR/2001/REC-xml-c14n-20010315',
+                    ],
+                    // NÃO força assinatura como filho do Inf... (isso costuma dar E324 em alguns provedores)
+                    // Vamos reposicionar para ficar dentro do <Rps>
+                ]
+            );
+
+            // 2) Reposiciona <Signature> para o formato do seu modelo:
+            // <Rps><InfDeclaracaoPrestacaoServico .../> <Signature/></Rps>
+            $signed = $this->moveSignatureToRpsSibling($signed, $id);
+
+            // Atualiza para a próxima assinatura
+            $currentXml = $signed;
+        }
+
+        // Retorna sem a declaração XML (geralmente os provedores aceitam melhor assim)
+        $finalDom = new \DOMDocument('1.0', 'UTF-8');
+        $finalDom->preserveWhiteSpace = true;
+        $finalDom->formatOutput = false;
+        $finalDom->loadXML($currentXml);
+
+        return $finalDom->saveXML($finalDom->documentElement);
+    }
+
+    /**
+     * Se o Signer inseriu <Signature> dentro do Inf... (enveloped),
+     * move a assinatura para ficar como irmã do Inf... dentro do nó <Rps>.
+     */
+    private function moveSignatureToRpsSibling(string $xml, string $id): string
+    {
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $dom->preserveWhiteSpace = true;
         $dom->formatOutput = false;
         $dom->loadXML($xml);
 
-        $xpath = new \DOMXPath($dom);
-        $xpath->registerNamespace('ns', 'http://www.abrasf.org.br/nfse.xsd');
-        $infNode = $xpath->query('//ns:InfDeclaracaoPrestacaoServico')->item(0);
+        $xp = new \DOMXPath($dom);
+        $xp->registerNamespace('nfse', 'http://www.abrasf.org.br/nfse.xsd');
+        $xp->registerNamespace('ds', 'http://www.w3.org/2000/09/xmldsig#');
 
-        if (!$infNode) {
-            throw new \Exception('Nó InfDeclaracaoPrestacaoServico não encontrado.');
+        /** @var \DOMElement|null $inf */
+        $inf = $xp->query('//nfse:InfDeclaracaoPrestacaoServico[@Id="'.$id.'"]')->item(0);
+        if (!$inf) {
+            return $xml;
         }
 
-        $id = $infNode->getAttribute('Id');
-        if (empty($id)) {
-            throw new \Exception('Atributo Id não encontrado no nó InfDeclaracaoPrestacaoServico.');
+        // Signature pode estar:
+        // a) dentro do Inf...
+        // b) já como irmão (dentro do Rps)
+        $sigInside = $xp->query('./ds:Signature', $inf)->item(0);
+        if (!$sigInside) {
+            // Já está fora, nada a fazer
+            return $xml;
         }
 
-        // Assina o nó InfDeclaracaoPrestacaoServico e inclui o Signature como filho direto
-        $signedXml = \NFePHP\Common\Signer::sign(
-            $this->certificate,
-            $dom->saveXML($infNode),
-            'InfDeclaracaoPrestacaoServico',
-            'Id',
-            $id,
-            [
-                'canonical' => true,
-                'signatureAlgorithm' => 'http://www.w3.org/2000/09/xmldsig#rsa-sha1',
-                'digestAlgorithm' => 'http://www.w3.org/2000/09/xmldsig#sha1',
-                'transformAlgorithm' => [
-                    'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
-                    'http://www.w3.org/TR/2001/REC-xml-c14n-20010315'
-                ],
-                'signatureNode' => 'InfDeclaracaoPrestacaoServico' // Força a assinatura dentro deste nó
-            ]
-        );
+        $rps = $inf->parentNode; // no seu modelo, parent é o <Rps>
+        if (!$rps instanceof \DOMElement) {
+            return $xml;
+        }
 
-        // Remove declaração XML do nó assinado
-        $signedXml = preg_replace('/<\?xml.*?\?>/', '', $signedXml);
+        // Remove do Inf... e adiciona depois do Inf... no Rps
+        $sigNode = $inf->removeChild($sigInside);
 
-        $signedDom = new \DOMDocument();
-        $signedDom->preserveWhiteSpace = false;
-        $signedDom->formatOutput = false;
-        $signedDom->loadXML($signedXml);
-        $signedInfNode = $signedDom->documentElement;
+        // Insere logo após o Inf...
+        if ($inf->nextSibling) {
+            $rps->insertBefore($sigNode, $inf->nextSibling);
+        } else {
+            $rps->appendChild($sigNode);
+        }
 
-        // Substitui o nó original pelo nó assinado (com Signature como filho)
-        $importedNode = $dom->importNode($signedInfNode, true);
-        $infNode->parentNode->replaceChild($importedNode, $infNode);
-
-        // Retorna o XML sem declaração XML
         return $dom->saveXML($dom->documentElement);
     }
 }
