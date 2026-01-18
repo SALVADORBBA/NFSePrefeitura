@@ -4,10 +4,13 @@ namespace NotasFiscais\Abrasf;
 
 use NFePHP\Common\Certificate;
 use NFePHP\Common\Signer;
+use NFePHP\Common\Strings;
 
 class PortoSeguroSigner
 {
-    protected $certificate;
+    protected Certificate $certificate;
+    private $algorithm = OPENSSL_ALGO_SHA1;
+    private $canonical = [false, false, null, null];
 
     public function __construct(string $certPath, string $certPassword)
     {
@@ -18,11 +21,6 @@ class PortoSeguroSigner
         $this->certificate = Certificate::readPfx($pfx, $certPassword);
     }
 
-    /**
-     * Assina o InfDeclaracaoPrestacaoServico (por @Id) e garante que
-     * o <Signature> fique dentro do <Rps> (como irmão do Inf...),
-     * e NÃO no final do XML.
-     */
     public function signRps(string $xml): string
     {
         $dom = new \DOMDocument('1.0', 'UTF-8');
@@ -35,20 +33,19 @@ class PortoSeguroSigner
 
         $xp = new \DOMXPath($dom);
         $xp->registerNamespace('nfse', 'http://www.abrasf.org.br/nfse.xsd');
-        $xp->registerNamespace('ds', 'http://www.w3.org/2000/09/xmldsig#');
 
         /** @var \DOMElement|null $inf */
         $inf = $xp->query('//nfse:InfDeclaracaoPrestacaoServico[@Id]')->item(0);
         if (!$inf) {
-            throw new \RuntimeException("Nó InfDeclaracaoPrestacaoServico com Id não encontrado.");
+            throw new \RuntimeException("InfDeclaracaoPrestacaoServico com @Id não encontrado.");
         }
 
-        $id = $inf->getAttribute('Id');
-        if (!$id) {
+        $id = trim($inf->getAttribute('Id'));
+        if ($id === '') {
             throw new \RuntimeException("Atributo Id vazio em InfDeclaracaoPrestacaoServico.");
         }
 
-        // 1) Assina o XML completo (não assine um fragmento!)
+        // 1) Assina o XML COMPLETO
         $signedXml = Signer::sign(
             $this->certificate,
             $dom->saveXML($dom->documentElement),
@@ -66,57 +63,70 @@ class PortoSeguroSigner
             ]
         );
 
-        // 2) Agora reposiciona o Signature: tem que ficar dentro do <Rps>
-        $signedDom = new \DOMDocument('1.0', 'UTF-8');
-        $signedDom->preserveWhiteSpace = true;
-        $signedDom->formatOutput = false;
-        $signedDom->loadXML($signedXml);
+        // 2) Carrega assinado e reposiciona Signature para dentro do <Rps> externo
+        $sd = new \DOMDocument('1.0', 'UTF-8');
+        $sd->preserveWhiteSpace = true;
+        $sd->formatOutput = false;
+        if (!$sd->loadXML($signedXml)) {
+            throw new \RuntimeException("Falha ao carregar XML assinado.");
+        }
 
-        $xp2 = new \DOMXPath($signedDom);
+        $xp2 = new \DOMXPath($sd);
         $xp2->registerNamespace('nfse', 'http://www.abrasf.org.br/nfse.xsd');
-        $xp2->registerNamespace('ds', 'http://www.w3.org/2000/09/xmldsig#');
+        $xp2->registerNamespace('ds',   'http://www.w3.org/2000/09/xmldsig#');
 
-        // acha o Inf do Id
         /** @var \DOMElement|null $inf2 */
         $inf2 = $xp2->query('//nfse:InfDeclaracaoPrestacaoServico[@Id="'.$id.'"]')->item(0);
         if (!$inf2) {
             throw new \RuntimeException("InfDeclaracaoPrestacaoServico Id={$id} não encontrado no XML assinado.");
         }
 
-        // acha assinatura (às vezes o Signer joga no root / fora do Rps)
+        // pega a assinatura que referencia esse Id
         /** @var \DOMElement|null $sig */
         $sig = $xp2->query('//ds:Signature[.//ds:Reference[@URI="#'.$id.'"]]')->item(0);
         if (!$sig) {
-            // fallback: primeira assinatura
-            $sig = $xp2->query('//ds:Signature')->item(0);
-        }
-        if (!$sig) {
-            throw new \RuntimeException("Signature não encontrada após assinar.");
+            throw new \RuntimeException("Signature com Reference #{$id} não encontrada.");
         }
 
-        // acha o <Rps> pai do Inf (o Rps "externo")
+        // acha o <Rps> EXTERNO (pai do InfDeclaracaoPrestacaoServico)
         /** @var \DOMElement|null $rpsOuter */
         $rpsOuter = $xp2->query('ancestor::nfse:Rps[1]', $inf2)->item(0);
         if (!$rpsOuter) {
-            throw new \RuntimeException("Rps pai do InfDeclaracaoPrestacaoServico não encontrado.");
+            throw new \RuntimeException("Rps externo (pai do InfDeclaracaoPrestacaoServico) não encontrado.");
         }
 
-        // se a assinatura já estiver dentro do Rps correto, beleza
-        $sigParent = $sig->parentNode;
-        if ($sigParent && $sigParent->isSameNode($rpsOuter)) {
-            return $signedDom->saveXML($signedDom->documentElement);
+        // se a assinatura não está dentro do Rps externo, move
+        if (!$sig->parentNode->isSameNode($rpsOuter)) {
+            $sig = $sig->parentNode->removeChild($sig);
+
+            // insere logo após o InfDeclaracaoPrestacaoServico dentro do Rps externo
+            if ($inf2->nextSibling) {
+                $rpsOuter->insertBefore($sig, $inf2->nextSibling);
+            } else {
+                $rpsOuter->appendChild($sig);
+            }
         }
 
-        // remove a assinatura de onde estiver (root, outro lugar etc.)
-        $sig = $sigParent->removeChild($sig);
+        return $sd->saveXML($sd->documentElement);
+    }
 
-        // e coloca como irmão do Inf... dentro do Rps
-        if ($inf2->nextSibling) {
-            $rpsOuter->insertBefore($sig, $inf2->nextSibling);
-        } else {
-            $rpsOuter->appendChild($sig);
+    public function signNFSeX(string $xml): string
+    {
+        if (empty($xml)) {
+            throw new \RuntimeException("O argumento xml passado para ser assinado está vazio.");
         }
+        
+        $xml = Strings::clearXmlString($xml);
 
-        return $signedDom->saveXML($signedDom->documentElement);
+        $signed = Signer::sign(
+            $this->certificate,
+            $xml,
+            'infDPS',
+            'Id',
+            $this->algorithm,
+            $this->canonical
+        );
+        
+        return $signed;
     }
 }
