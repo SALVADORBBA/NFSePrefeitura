@@ -63,7 +63,8 @@ class PortoSeguro
         try {
             return $client->__soapCall('RecepcionarLoteRps', [[
                 'nfseCabecMsg' => $cabec,
-                'nfseDadosMsg' => $xmlDados,
+               // 'nfseDadosMsg' => $xmlDados,
+                   'nfseDadosMsg' => htmlspecialchars($xmlDados, ENT_XML1 | ENT_QUOTES, 'UTF-8')
             ]]);
         } catch (SoapFault $e) {
             throw new Exception(
