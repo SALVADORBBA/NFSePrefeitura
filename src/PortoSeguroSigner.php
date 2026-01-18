@@ -15,7 +15,7 @@ class PortoSeguroSigner
     public function __construct($certPath, $certPassword)
     {
         $this->certificate = Certificate::readPfx(file_get_contents($certPath), $certPassword);
-    }
+    } 
 
     public function signRps($xml)
     {
