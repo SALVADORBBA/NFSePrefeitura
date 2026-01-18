@@ -49,9 +49,9 @@ class PortoSeguroSigner
             $this->certificate,
             $xml,
             'InfDeclaracaoPrestacaoServico',
-            '#' . $id,
-            false,
-            [ // Algoritmos e transforms exigidos
+            '#' . $id, // Referência correta
+            OPENSSL_ALGO_SHA1,
+            [
                 'canonical' => 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315',
                 'signature' => 'http://www.w3.org/2000/09/xmldsig#rsa-sha1',
                 'digest' => 'http://www.w3.org/2000/09/xmldsig#sha1',
