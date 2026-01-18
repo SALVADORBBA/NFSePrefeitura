@@ -1,6 +1,6 @@
 <?php
 
-use NFSePrefeitura\NFSe\NFSeSigner;
+use NFSePrefeitura\NFSe\NFSeNacionalSigner;
 use NFSePrefeitura\NFSe\PortoSeguro;
 use NFePHP\Common\Certificate;
 
@@ -128,9 +128,18 @@ class NfseService
         //     (string)$certPassword,
         //     "InfDeclaracaoPrestacaoServico"
         // );
-    $signer = new \NotasFiscais\Abrasf\PortoSeguroSigner($certPath, $certPassword);
-    $xmlAssinado = $signer->signRps($xml);
-
+try {
+    $xmlAssinado = NFSeNacionalSigner::assinarDpsXml(
+        $xml,
+        $certPath,
+        $certPassword
+    );
+    
+    // $xmlAssinado agora contém o XML com a assinatura digital
+} catch (InvalidArgumentException $e) {
+    // Tratar erros (certificado inválido, XML vazio, etc.)
+    echo 'Erro: ' . $e->getMessage();
+}
  
         self::salvar("02_assinado.xml", $xmlAssinado);
 

@@ -121,7 +121,7 @@ class PortoSeguroSigner
         $signed = Signer::sign(
             $this->certificate,
             $xml,
-            'infDPS',
+            'InfDeclaracaoPrestacaoServico',
             'Id',
             $this->algorithm,
             $this->canonical
