@@ -37,7 +37,8 @@ class PortoSeguroSigner
             throw new \Exception('Atributo Id não encontrado no nó InfDeclaracaoPrestacaoServico.');
         }
 
-        $signedXml = Signer::sign(
+        // Assina o nó InfDeclaracaoPrestacaoServico e inclui o Signature como filho direto
+        $signedXml = \NFePHP\Common\Signer::sign(
             $this->certificate,
             $dom->saveXML($infNode),
             'InfDeclaracaoPrestacaoServico',
@@ -55,12 +56,16 @@ class PortoSeguroSigner
         );
 
         $signedDom = new \DOMDocument();
+        $signedDom->preserveWhiteSpace = false;
+        $signedDom->formatOutput = false;
         $signedDom->loadXML($signedXml);
         $signedInfNode = $signedDom->documentElement;
 
+        // Substitui o nó original pelo nó assinado (com Signature como filho)
         $importedNode = $dom->importNode($signedInfNode, true);
         $infNode->parentNode->replaceChild($importedNode, $infNode);
 
-        return $dom->saveXML($dom->documentElement); // Retorna apenas o nó raiz
+        // Retorna o XML sem declaração XML
+        return $dom->saveXML($dom->documentElement);
     }
 }
