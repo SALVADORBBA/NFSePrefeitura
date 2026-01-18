@@ -1,91 +1,147 @@
 <?php
+
 namespace NFSePrefeitura\NFSe;
+
+use DOMDocument;
+use DOMXPath;
+use DOMElement;
+use InvalidArgumentException;
+use NFePHP\Common\Certificate;
+use NFePHP\Common\Signer;
+use NFePHP\Common\Strings;
 
 class AssinadorXMLSeguro
 {
-    private $certificado;
+    private Certificate $certificate;
+    private int $algorithm = OPENSSL_ALGO_SHA1;
+    private array $canonical = [false, false, null, null];
 
-    public function assinarXML($xml, $node, $certificado)
+    public function __construct(string $certPath, string $certPassword)
     {
-        try {
-            $this->validarParametros($xml, $node, $certificado);
-            $this->certificado = $certificado;
-
-            $dom = new \DOMDocument();
-            $dom->preserveWhiteSpace = true;
-            $dom->loadXML($xml);
-
-            $nodes = $this->selecionarNos($dom->childNodes, $node);
-
-            if (count($nodes) === 0) {
-                return $xml;
-            }
-
-            return $this->processarAssinatura($dom, $nodes);
-        } catch (\Exception $e) {
-            throw new \Exception("Erro ao assinar XML: " . $e->getMessage(), 0, $e);
+        if (!is_file($certPath)) {
+            throw new InvalidArgumentException("Certificado não encontrado: {$certPath}");
         }
+
+        $this->certificate = Certificate::readPfx(
+            file_get_contents($certPath),
+            $certPassword
+        );
     }
 
-    private function validarParametros($xml, $node, $certificado)
+    public function assinarLoteRps(string $xml): string
     {
-        if (empty($xml)) {
-            throw new \InvalidArgumentException("XML não pode ser nulo ou vazio");
+        if (trim($xml) === '') {
+            throw new InvalidArgumentException('XML vazio');
         }
 
-        if (empty($node)) {
-            throw new \InvalidArgumentException("Nó raiz não pode ser nulo ou vazio");
-        }
+        $xml = Strings::clearXmlString($xml);
 
-        if ($certificado === null) {
-            throw new \InvalidArgumentException("Certificado não pode ser nulo");
-        }
+        /** 1️⃣ Assina o RPS (NÓ CORRETO) */
+        $xml = Signer::sign(
+            $this->certificate,
+            $xml,
+            'Rps',
+            'Id',
+            $this->algorithm,
+            $this->canonical
+        );
+
+        /** 2️⃣ Move assinatura do RPS */
+        $xml = $this->reposicionarAssinaturaRps($xml);
+
+        /** 3️⃣ Assina o LOTE */
+        $xml = Signer::sign(
+            $this->certificate,
+            $xml,
+            'LoteRps',
+            'Id',
+            $this->algorithm,
+            $this->canonical
+        );
+
+        /** 4️⃣ Move assinatura do LOTE */
+        $xml = $this->reposicionarAssinaturaLote($xml);
+
+        return Strings::clearXmlString($xml);
     }
 
-    private function selecionarNos($nodes, $nodeName)
+    /**
+     * Assinatura do RPS:
+     * Após </Rps> e antes de </ListaRps>
+     */
+    private function reposicionarAssinaturaRps(string $xml): string
     {
-        $lista = [];
+        $dom = new DOMDocument('1.0', 'UTF-8');
+        $dom->preserveWhiteSpace = false;
+        $dom->formatOutput = false;
+        $dom->loadXML($xml);
 
-        foreach ($nodes as $node) {
-            if ($node->nodeName === $nodeName) {
-                $lista[] = $node;
-            }
+        $xp = new DOMXPath($dom);
 
-            if ($node->hasChildNodes()) {
-                $lista = array_merge($lista, $this->selecionarNos($node->childNodes, $nodeName));
-            }
+        $rps = $xp->query('//*[local-name()="Rps"]')->item(0);
+        $sig = $xp->query(
+            '//*[local-name()="Signature"]
+             [descendant::*[local-name()="Reference" and starts-with(@URI,"#Rps")]]'
+        )->item(0);
+
+        if (!$rps instanceof DOMElement || !$sig instanceof DOMElement) {
+            return $xml;
         }
 
-        return $lista;
-    }
+        $sig->parentNode->removeChild($sig);
 
-    private function processarAssinatura($dom, $nodes)
-    {
-        foreach ($nodes as $node) {
-            $assinado = $this->assinarElemento($node);
-            $importado = $dom->importNode($assinado, true);
-            $node->appendChild($importado);
-        }
+        /** insere após </Rps> */
+        $rps->parentNode->insertBefore(
+            $sig,
+            $this->nextElementSibling($rps)
+        );
 
         return $dom->saveXML();
     }
 
-    private function assinarElemento($elemento)
+    /**
+     * Assinatura do LOTE:
+     * Após </LoteRps> e antes de </EnviarLoteRpsEnvio>
+     */
+    private function reposicionarAssinaturaLote(string $xml): string
     {
-        // Implementação da assinatura digital em PHP
-        // Esta parte precisaria usar a extensão OpenSSL do PHP
-        // e pode variar dependendo da implementação específica
-        throw new \Exception("Implementação da assinatura digital em PHP requer configuração adicional");
-    }
+        $dom = new DOMDocument('1.0', 'UTF-8');
+        $dom->preserveWhiteSpace = false;
+        $dom->formatOutput = false;
+        $dom->loadXML($xml);
 
-    private function obterId($elemento)
-    {
-        $id = $elemento->getAttribute('Id') ?: $elemento->getAttribute('id');
+        $xp = new DOMXPath($dom);
 
-        if (empty($id)) {
-            throw new \Exception("Elemento com atributo ID não encontrado no XML");
+        $lote = $xp->query('//*[local-name()="LoteRps"]')->item(0);
+        $sig = $xp->query(
+            '//*[local-name()="Signature"]
+             [descendant::*[local-name()="Reference" and starts-with(@URI,"#Lote")]]'
+        )->item(0);
+
+        if (!$lote instanceof DOMElement || !$sig instanceof DOMElement) {
+            return $xml;
         }
 
-        return "#" . $id;
+        $sig->parentNode->removeChild($sig);
+
+        /** insere após </LoteRps> */
+        $lote->parentNode->insertBefore(
+            $sig,
+            $this->nextElementSibling($lote)
+        );
+
+        return $dom->saveXML();
+    }
+
+    /**
+     * Ignora nós de texto (quebra de linha)
+     */
+    private function nextElementSibling(DOMElement $node): ?DOMElement
+    {
+        $next = $node->nextSibling;
+        while ($next && !$next instanceof DOMElement) {
+            $next = $next->nextSibling;
+        }
+        return $next;
     }
 }

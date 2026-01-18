@@ -1,6 +1,6 @@
 <?php
 
-use NFSePrefeitura\NFSe\NFSeNacionalSigner;
+use NFSePrefeitura\NFSe\AssinadorXMLSeguro;
 use NFSePrefeitura\NFSe\PortoSeguro;
 use NFePHP\Common\Certificate;
 
@@ -10,7 +10,7 @@ class NfseService
     private ?string $certPath;
     private ?string $certPassword;
     private \SoapClient $client;
-
+    private  $assinador;
     public function __construct(?string $wsdl = null, ?string $certPath = null, ?string $certPassword = null)
     {
         $wsdlPath = $wsdl ?: 'app/ws/nfse.wsdl';
@@ -21,7 +21,7 @@ class NfseService
         $this->wsdl         = $wsdlPath;
         $this->certPath     = $certPath;
         $this->certPassword = $certPassword;
-
+    $this->assinador = new AssinadorXMLSeguro();
         $options = [
             'trace'        => 1,
             'exceptions'   => true,
@@ -78,27 +78,13 @@ class NfseService
         $portoSeguro = new PortoSeguro((string)$certPath, (string)$certPassword);
         $xml = $portoSeguro->gerarXmlLoteRps($dados);
         self::salvar("01_inicial.xml", $xml);
- exit;
-        // 3) Assina no nível InfDeclaracaoPrestacaoServico
-        // $xmlAssinado = NFSeSigner::sign(
-        //     $xml,
-        //     (string)$certPath,
-        //     (string)$certPassword,
-        //     "InfDeclaracaoPrestacaoServico"
-        // );
-try {
-    $xmlAssinado = NFSeNacionalSigner::assinarDpsXml(
+ 
+  $xmlAssinado = $this->assinador->assinarXML(
         $xml,
+        'LoteRps',
         $certPath,
         $certPassword
     );
-    
-    // $xmlAssinado agora contém o XML com a assinatura digital
-} catch (InvalidArgumentException $e) {
-    // Tratar erros (certificado inválido, XML vazio, etc.)
-    echo 'Erro: ' . $e->getMessage();
-}
- 
         self::salvar("02_assinado.xml", $xmlAssinado);
 
         // 4) Envia (normalmente RecepcionarLoteRps ou RecepcionarLoteRpsSincrono)
