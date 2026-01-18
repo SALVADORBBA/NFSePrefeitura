@@ -27,10 +27,17 @@ class PortoSeguroSigner
         $xpath = new \DOMXPath($dom);
         $xpath->registerNamespace('ns', 'http://www.abrasf.org.br/nfse.xsd');
         $infNode = $xpath->query('//ns:InfDeclaracaoPrestacaoServico')->item(0);
-        $id = $infNode->getAttribute('Id');
 
-        // Gere a assinatura digital do nó InfDeclaracaoPrestacaoServico
-        $signedXml = \NFePHP\Common\Signer::sign(
+        if (!$infNode) {
+            throw new \Exception('Nó InfDeclaracaoPrestacaoServico não encontrado.');
+        }
+
+        $id = $infNode->getAttribute('Id');
+        if (empty($id)) {
+            throw new \Exception('Atributo Id não encontrado no nó InfDeclaracaoPrestacaoServico.');
+        }
+
+        $signedXml = Signer::sign(
             $this->certificate,
             $dom->saveXML($infNode),
             'InfDeclaracaoPrestacaoServico',
@@ -47,7 +54,6 @@ class PortoSeguroSigner
             ]
         );
 
-        // Substitua o nó original pelo nó assinado
         $signedDom = new \DOMDocument();
         $signedDom->loadXML($signedXml);
         $signedInfNode = $signedDom->documentElement;
@@ -55,6 +61,6 @@ class PortoSeguroSigner
         $importedNode = $dom->importNode($signedInfNode, true);
         $infNode->parentNode->replaceChild($importedNode, $infNode);
 
-        return $dom->saveXML();
+        return $dom->saveXML($dom->documentElement); // Retorna apenas o nó raiz
     }
 }
