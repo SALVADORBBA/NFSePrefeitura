@@ -1,7 +1,7 @@
 <?php
+
+use NFSePrefeitura\NFSe\NFSeSigner;
 use NFSePrefeitura\NFSe\PortoSeguro;
-use NFSePrefeitura\NFSe\PortoSeguroSigner;
- 
 use NFePHP\Common\Certificate;
 
 class NfseService
@@ -49,7 +49,7 @@ class NfseService
             throw new \InvalidArgumentException('O XML passado para assinatura está vazio.');
         }
 
-        $certPath     = $certPath ?: $this->certPath;
+        $certPath = $certPath ?: $this->certPath;
         $certPassword = $certPassword ?: $this->certPassword;
 
         if (!$certPath || !file_exists($certPath)) {
@@ -59,21 +59,12 @@ class NfseService
             throw new \InvalidArgumentException('Senha do certificado não informada.');
         }
 
-        $certificate = Certificate::readPfx(file_get_contents($certPath), $certPassword);
-
-        $xml = \NFePHP\Common\Strings::clearXmlString($xml);
-
-        $algorithm = OPENSSL_ALGO_SHA1; // ABRASF legado
-        $canonical = [false, false, null, null];
-
-        return \NFePHP\Common\Signer::sign(
-            $certificate,
+        $xmlAssinado = NFSeNacionalSigner::assinarDpsXml(
             $xml,
-            $tag,
-            'Id',
-            $algorithm,
-            $canonical
+            (string)$certPath,
+            (string)$certPassword
         );
+
     }
 
     /* =========================================================
@@ -131,24 +122,27 @@ class NfseService
         self::salvar("01_inicial.xml", $xml);
 
         // 3) Assina no nível InfDeclaracaoPrestacaoServico
-        try {
-            // Certificado lido e validado pelo NFePHP
-            $xmlAssinado = $this->assinarXml($xml, $certPath, $certPassword, "InfDeclaracaoPrestacaoServico");
-            self::salvar("02_assinado.xml", $xmlAssinado);
+        // $xmlAssinado = NFSeSigner::sign(
+        //     $xml,
+        //     (string)$certPath,
+        //     (string)$certPassword,
+        //     "InfDeclaracaoPrestacaoServico"
+        // );
+    $signer = new \NotasFiscais\Abrasf\PortoSeguroSigner($certPath, $certPassword);
+    $xmlAssinado = $signer->signRps($xml);
 
-            // Enviando o XML assinado
-            $resposta = $this->enviar($xmlAssinado, 'RecepcionarLoteRps');
-            if (isset($resposta->outputXML)) {
-                self::salvar("03_resposta.xml", $resposta->outputXML);
-            } else {
-                self::salvar("03_resposta_dump.txt", print_r($resposta, true));
-            }
+ 
+        self::salvar("02_assinado.xml", $xmlAssinado);
 
-            return $resposta;
-        } catch (Exception $e) {
-            echo "Erro ao assinar/enviar XML: " . $e->getMessage();
+        // 4) Envia (normalmente RecepcionarLoteRps ou RecepcionarLoteRpsSincrono)
+        $resposta = $this->enviar($xmlAssinado, 'RecepcionarLoteRps');
+        if (isset($resposta->outputXML)) {
+            self::salvar("03_resposta.xml", $resposta->outputXML);
+        } else {
+            self::salvar("03_resposta_dump.txt", print_r($resposta, true));
         }
 
+        return $resposta;
     }
 
     /* =========================================================
