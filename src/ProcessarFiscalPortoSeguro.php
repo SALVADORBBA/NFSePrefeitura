@@ -151,6 +151,7 @@ class ProcessarFiscalPortoSeguro {
      private function prepareRpsData(array $rps): array
      {
          return [
+             'inf_id' => $rps['inf_id'],
              'numero' => $rps['numero'],
              'serie' => $rps['serie'],
              'tipo' => $rps['tipo'],
