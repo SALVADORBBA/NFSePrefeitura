@@ -1,5 +1,7 @@
 <?php
 
+namespace NFSePrefeitura\NFSe;
+
 use NFSePrefeitura\NFSe\PortoSeguro;
 use NFSePrefeitura\NFSe\PortoSeguroSigner;
 
