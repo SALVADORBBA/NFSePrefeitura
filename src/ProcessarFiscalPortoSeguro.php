@@ -97,29 +97,54 @@ class ProcessarFiscalPortoSeguro {
          return round($value, 2);
      }
  
-     private function prepareServicoData(array $servico): array
+     private function prepareServicoData(?array $servico): array
      {
+         if ($servico === null) {
+             return [
+                 'valorServicos' => 0.0,
+                 'valorDeducoes' => 0.0,
+                 'valorPis' => 0.0,
+                 'valorCofins' => 0.0,
+                 'valorInss' => 0.0,
+                 'valorIr' => 0.0,
+                 'valorCsll' => 0.0,
+                 'issRetido' => false,
+                 'valorIss' => 0.0,
+                 'valorIssRetido' => 0.0,
+                 'outrasRetencoes' => 0.0,
+                 'baseCalculo' => 0.0,
+                 'aliquota' => 0.0,
+                 'valorLiquidoNfse' => 0.0,
+                 'descontoIncondicionado' => 0.0,
+                 'descontoCondicionado' => 0.0,
+                 'itemListaServico' => '',
+                 'codigoTributacaoMunicipio' => '',
+                 'discriminacao' => '',
+                 'codigoMunicipio' => ''
+             ];
+         }
+         
          return [
-             'valorServicos' => $this->normalizeFloat($servico['valorServicos']),
-             'valorDeducoes' => $this->normalizeFloat($servico['valorDeducoes']),
-             'valorPis' => $this->normalizeFloat($servico['valorPis']),
-             'valorCofins' => $this->normalizeFloat($servico['valorCofins']),
-             'valorInss' => $this->normalizeFloat($servico['valorInss']),
-             'valorIr' => $this->normalizeFloat($servico['valorIr']),
-             'valorCsll' => $this->normalizeFloat($servico['valorCsll']),
-             'issRetido' => $servico['issRetido'],
-             'valorIss' => $this->normalizeFloat($servico['valorIss']),
-             'valorIssRetido' => $this->normalizeFloat($servico['valorIssRetido']),
-             'outrasRetencoes' => $this->normalizeFloat($servico['outrasRetencoes']),
-             'baseCalculo' => $this->normalizeFloat($servico['baseCalculo']),
-             'aliquota' => $this->normalizeFloat($servico['aliquota']),
-             'valorLiquidoNfse' => $this->normalizeFloat($servico['valorLiquidoNfse']),
-             'descontoIncondicionado' => $this->normalizeFloat($servico['descontoIncondicionado']),
-             'descontoCondicionado' => $this->normalizeFloat($servico['descontoCondicionado']),
-             'itemListaServico' => $servico['itemListaServico'],
-             'codigoTributacaoMunicipio' => $servico['codigoTributacaoMunicipio'],
-             'discriminacao' => $servico['discriminacao'],
-             'codigoMunicipio' => $servico['codigoMunicipio']
+             'valorServicos' => $this->normalizeFloat($servico['valorServicos'] ?? 0.0),
+             'valorDeducoes' => $this->normalizeFloat($servico['valorDeducoes'] ?? 0.0),
+             'valorPis' => $this->normalizeFloat($servico['valorPis'] ?? 0.0),
+             'valorCofins' => $this->normalizeFloat($servico['valorCofins'] ?? 0.0),
+             'valorInss' => $this->normalizeFloat($servico['valorInss'] ?? 0.0),
+             'valorIr' => $this->normalizeFloat($servico['valorIr'] ?? 0.0),
+             'valorCsll' => $this->normalizeFloat($servico['valorCsll'] ?? 0.0),
+             'issRetido' => $servico['issRetido'] ?? false,
+             'valorIss' => $this->normalizeFloat($servico['valorIss'] ?? 0.0),
+             'valorIssRetido' => $this->normalizeFloat($servico['valorIssRetido'] ?? 0.0),
+             'outrasRetencoes' => $this->normalizeFloat($servico['outrasRetencoes'] ?? 0.0),
+             'baseCalculo' => $this->normalizeFloat($servico['baseCalculo'] ?? 0.0),
+             'aliquota' => $this->normalizeFloat($servico['aliquota'] ?? 0.0),
+             'valorLiquidoNfse' => $this->normalizeFloat($servico['valorLiquidoNfse'] ?? 0.0),
+             'descontoIncondicionado' => $this->normalizeFloat($servico['descontoIncondicionado'] ?? 0.0),
+             'descontoCondicionado' => $this->normalizeFloat($servico['descontoCondicionado'] ?? 0.0),
+             'itemListaServico' => $servico['itemListaServico'] ?? '',
+             'codigoTributacaoMunicipio' => $servico['codigoTributacaoMunicipio'] ?? '',
+             'discriminacao' => $servico['discriminacao'] ?? '',
+             'codigoMunicipio' => $servico['codigoMunicipio'] ?? ''
          ];
      }
  
