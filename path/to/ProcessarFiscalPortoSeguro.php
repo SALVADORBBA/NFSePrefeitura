@@ -1,0 +1,20 @@
+$requiredFields = [
+    'inf_id',
+    'infRps',
+    'competencia',
+    'valorServicos',
+    'valorIss',
+    'aliquota',
+    'issRetido',
+    'itemListaServico',
+    'discriminacao',
+    'codigoMunicipio',
+    'exigibilidadeISS',
+    'regimeEspecialTributacao',
+    'optanteSimplesNacional',
+    'incentivoFiscal',
+    'codigoCnae',
+    'codigoTributacaoMunicipio',
+    'municipioIncidencia',
+    'tomador'
+];
