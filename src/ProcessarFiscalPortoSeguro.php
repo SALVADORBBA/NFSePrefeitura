@@ -93,9 +93,52 @@ class ProcessarFiscalPortoSeguro {
     }
     
     private function normalizeFloat(float $value): float
-    {
-        return round($value, 2);
-    }
+     {
+         return round($value, 2);
+     }
+ 
+     private function prepareServicoData(array $servico): array
+     {
+         return [
+             'valorServicos' => $this->normalizeFloat($servico['valorServicos']),
+             'valorDeducoes' => $this->normalizeFloat($servico['valorDeducoes']),
+             'valorPis' => $this->normalizeFloat($servico['valorPis']),
+             'valorCofins' => $this->normalizeFloat($servico['valorCofins']),
+             'valorInss' => $this->normalizeFloat($servico['valorInss']),
+             'valorIr' => $this->normalizeFloat($servico['valorIr']),
+             'valorCsll' => $this->normalizeFloat($servico['valorCsll']),
+             'issRetido' => $servico['issRetido'],
+             'valorIss' => $this->normalizeFloat($servico['valorIss']),
+             'valorIssRetido' => $this->normalizeFloat($servico['valorIssRetido']),
+             'outrasRetencoes' => $this->normalizeFloat($servico['outrasRetencoes']),
+             'baseCalculo' => $this->normalizeFloat($servico['baseCalculo']),
+             'aliquota' => $this->normalizeFloat($servico['aliquota']),
+             'valorLiquidoNfse' => $this->normalizeFloat($servico['valorLiquidoNfse']),
+             'descontoIncondicionado' => $this->normalizeFloat($servico['descontoIncondicionado']),
+             'descontoCondicionado' => $this->normalizeFloat($servico['descontoCondicionado']),
+             'itemListaServico' => $servico['itemListaServico'],
+             'codigoTributacaoMunicipio' => $servico['codigoTributacaoMunicipio'],
+             'discriminacao' => $servico['discriminacao'],
+             'codigoMunicipio' => $servico['codigoMunicipio']
+         ];
+     }
+ 
+     private function prepareRpsData(array $rps): array
+     {
+         return [
+             'numero' => $rps['numero'],
+             'serie' => $rps['serie'],
+             'tipo' => $rps['tipo'],
+             'dataEmissao' => $rps['dataEmissao'],
+             'naturezaOperacao' => $rps['naturezaOperacao'],
+             'optanteSimplesNacional' => $rps['optanteSimplesNacional'],
+             'incentivadorCultural' => $rps['incentivadorCultural'],
+             'status' => $rps['status'],
+             'servico' => $this->prepareServicoData($rps['servico']),
+             'prestador' => $rps['prestador'],
+             'tomador' => $rps['tomador']
+         ];
+     }
 
     private function validateTomador(array $tomador, int $rpsIndex): void
     {
