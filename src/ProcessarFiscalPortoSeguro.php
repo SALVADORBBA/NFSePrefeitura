@@ -92,6 +92,11 @@ class ProcessarFiscalPortoSeguro {
         $this->validateTomador($rps['tomador'], $index);
     }
     
+    private function normalizeFloat(float $value): float
+    {
+        return round($value, 2);
+    }
+
     private function validateTomador(array $tomador, int $rpsIndex): void
     {
         $requiredFields = [
