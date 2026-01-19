@@ -14,14 +14,15 @@ use Exception;
 class PortoSeguro
 {
     private const WSDL = 'https://portoseguroba.gestaoiss.com.br/ws/nfse.asmx?WSDL';
-
+    private string $wsdlPath;
     private string $certPath;
     private string $certPassword;
 
-    public function __construct(string $certPath, string $certPassword)
+    public function __construct(string $certPath, string $certPassword, string $wsdlPath = '')
     {
         $this->certPath     = $certPath;
         $this->certPassword = $certPassword;
+        $this->wsdlPath     = $wsdlPath;
     }
 
     /* =========================================================
@@ -29,7 +30,11 @@ class PortoSeguro
      * ========================================================= */
     private function client(): SoapClient
     {
-        return new SoapClient(self::WSDL, [
+        $wsdl = !empty($this->wsdlPath) && file_exists($this->wsdlPath) 
+            ? $this->wsdlPath 
+            : self::WSDL;
+        
+        return new SoapClient($wsdl, [
             'soap_version' => SOAP_1_1,
             'trace'        => true,
             'exceptions'   => true,

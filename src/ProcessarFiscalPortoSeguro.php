@@ -120,7 +120,7 @@ class ProcessarFiscalPortoSeguro {
         }
 
         // Usar a classe PortoSeguro para gerar o XML
-        $portoSeguro = new PortoSeguro($this->nfseService->certPath, $this->nfseService->certPassword);
+        $portoSeguro = new PortoSeguro($this->nfseService->certPath, $this->nfseService->certPassword, $this->nfseService->wsdl);
         return $portoSeguro->gerarXmlLoteRps($dadosLote, '2.02');
     }
 
