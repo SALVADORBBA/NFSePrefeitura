@@ -77,7 +77,7 @@ class ProcessarFiscalPortoSeguro {
 
         foreach ($requiredFields as $field) {
             if (empty($rps[$field])) {
-                throw new NfseProcessingException("Field {$field} is required in RPS at index {$index}");
+                throw new NfseProcessingException("Campo obrigatório ausente: {$field} no RPS no índice {$index}");
             }
         }
 
