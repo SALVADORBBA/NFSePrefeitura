@@ -149,22 +149,23 @@ class ProcessarFiscalPortoSeguro {
      }
  
      private function prepareRpsData(array $rps): array
-     {
-         return [
-             'inf_id' => $rps['inf_id'],
-             'numero' => $rps['numero'],
-             'serie' => $rps['serie'],
-             'tipo' => $rps['tipo'],
-             'dataEmissao' => $rps['dataEmissao'],
-             'naturezaOperacao' => $rps['naturezaOperacao'],
-             'optanteSimplesNacional' => $rps['optanteSimplesNacional'],
-             'incentivadorCultural' => $rps['incentivadorCultural'],
-             'status' => $rps['status'],
-             'servico' => $this->prepareServicoData($rps['servico']),
-             'prestador' => $rps['prestador'],
-             'tomador' => $rps['tomador']
-         ];
-     }
+    {
+        return [
+            'inf_id' => $rps['inf_id'],
+            'infRps' => $rps['infRps'],
+            'numero' => $rps['numero'],
+            'serie' => $rps['serie'],
+            'tipo' => $rps['tipo'],
+            'dataEmissao' => $rps['dataEmissao'],
+            'naturezaOperacao' => $rps['naturezaOperacao'],
+            'optanteSimplesNacional' => $rps['optanteSimplesNacional'],
+            'incentivadorCultural' => $rps['incentivadorCultural'],
+            'status' => $rps['status'],
+            'servico' => $this->prepareServicoData($rps['servico']),
+            'prestador' => $rps['prestador'],
+            'tomador' => $rps['tomador']
+        ];
+    }
 
     private function validateTomador(array $tomador, int $rpsIndex): void
     {
