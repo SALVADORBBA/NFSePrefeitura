@@ -3,7 +3,7 @@
 namespace NFSePrefeitura\NFSe;
 
 use NFSePrefeitura\NFSe\PortoSeguro;
-use NFSePrefeitura\NFSe\PortoSeguroSigner;
+use NFSePrefeitura\NFSe\AssinadorXMLSeguro;
 use NFSePrefeitura\NFSe\Exceptions\NfseProcessingException;
 
 class ProcessarFiscalPortoSeguro {
@@ -12,7 +12,7 @@ class ProcessarFiscalPortoSeguro {
     private string $certPassword;
     private string $wsdlPath;
     private PortoSeguro $portoSeguro;
-    private PortoSeguroSigner $signer;
+    private AssinadorXMLSeguro $signer;
 
     public function __construct(
         array $jsonData, 
@@ -116,7 +116,7 @@ class ProcessarFiscalPortoSeguro {
             $this->wsdlPath
         );
         
-        $this->signer = new PortoSeguroSigner(
+        $this->signer = new AssinadorXMLSeguro(
             $this->certPath,
             $this->certPassword,
             $this->wsdlPath

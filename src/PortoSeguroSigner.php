@@ -11,7 +11,7 @@ use Exception;
  * Gera XML do EnviarLoteRpsEnvio (sem assinatura).
  * Foco: passar no XSD do provedor (datas, padrões, enums e ordem).
  */
-class PortoSeguro
+class PortoSeguroSigner
 {
     private const WSDL = 'https://portoseguroba.gestaoiss.com.br/ws/nfse.asmx?WSDL';
 
