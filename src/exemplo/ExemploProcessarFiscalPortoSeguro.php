@@ -57,11 +57,13 @@ $certPath = 'caminho/para/certificado.pfx';
 $certPassword = 'senha_do_certificado';
 
 try {
-    // Criar instância do NfseService
-    $nfseService = new NfseService($wsdlPath, $certPath, $certPassword);
-    
-    // Criar instância do ProcessarFiscalPortoSeguro
-    $processador = new ProcessarFiscalPortoSeguro($jsonData, $nfseService);
+        // Criar instância do ProcessarFiscalPortoSeguro
+        $processador = new ProcessarFiscalPortoSeguro(
+            $jsonData,
+            $certPath,
+            $certPassword,
+            $wsdlPath
+        );
     
     // Processar o JSON e enviar para o webservice
     $resultado = $processador->processar();

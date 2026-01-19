@@ -9,9 +9,11 @@ class ProcessarFiscalPortoSeguro {
     private $jsonData;
     private $nfseService;
 
-    public function __construct($jsonData, $nfseService) {
+    public function __construct($jsonData, $certPath, $certPassword, $wsdlPath) {
         $this->jsonData = $jsonData;
-        $this->nfseService = $nfseService;
+        $this->certPath = $certPath;
+        $this->certPassword = $certPassword;
+        $this->wsdlPath = $wsdlPath;
     }
 
     public function processar() {
@@ -122,7 +124,7 @@ class ProcessarFiscalPortoSeguro {
         }
 
         // Usar a classe PortoSeguro para gerar o XML
-        $portoSeguro = new PortoSeguro($this->nfseService->certPath, $this->nfseService->certPassword, $this->nfseService->wsdl);
+        $portoSeguro = new PortoSeguro($this->certPath, $this->certPassword, $this->wsdlPath);
         return $portoSeguro->gerarXmlLoteRps($dadosLote, '2.02');
     }
 
@@ -130,9 +132,9 @@ class ProcessarFiscalPortoSeguro {
         try {
             // Criar instância do assinador com certificado e senha
             $assinador = new PortoSeguroSigner(
-                $this->nfseService->certPath, 
-                $this->nfseService->certPassword,
-                $this->nfseService->wsdl
+                $this->certPath, 
+                $this->certPassword,
+                $this->wsdlPath
             );
             
             // Assinar o XML usando o método correto
