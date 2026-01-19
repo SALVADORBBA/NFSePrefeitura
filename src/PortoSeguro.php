@@ -142,7 +142,10 @@ class PortoSeguro
         // Serviço
         $valorServicos    = $this->money($rps['valorServicos'] ?? null, true, "valorServicos (RPS {$infId})");
         $valorIss         = $this->money($rps['valorIss'] ?? 0);
-        $aliquota         = $this->aliquotaToDecimal4($rps['aliquota'] ?? 0); // 2 => 0.0200
+        $aliquota = number_format((float)$rps['aliquota'], 2, '.', '');
+        
+        
+ 
 
         $issRetido        = $this->enum12($rps['issRetido'] ?? null, "IssRetido (RPS {$infId})");
         $itemListaServico =  (string)($rps['itemListaServico'] ?? '');
@@ -152,7 +155,7 @@ class PortoSeguro
         $exigibilidadeISS = $this->digitsOnlyReq($rps['exigibilidadeISS'] ?? null, "ExigibilidadeISS (RPS {$infId})");
 
         // opcionais (só se vierem)
-        $codigoCnae              = $this->tagIfDigits('CodigoCnae', $rps['codigoCnae'] ?? null);
+        $codigoCnae              =   $rps['codigoCnae'] ;
         $codigoTributacaoMun     = $this->tagIfText('CodigoTributacaoMunicipio', $rps['codigoTributacaoMunicipio'] ?? null);
 
         // se o provedor NÃO tiver essa tag no schema, REMOVA (deixe vazio sempre).
@@ -219,11 +222,13 @@ class PortoSeguro
         $x .= '<ValorServicos>'.$this->xmlEscape($valorServicos).'</ValorServicos>';
         $x .= '<ValorIss>'.$this->xmlEscape($valorIss).'</ValorIss>';
         $x .= '<Aliquota>'.$this->xmlEscape($aliquota).'</Aliquota>';
+        
         $x .= '</Valores>';
 
         $x .= '<IssRetido>'.$this->xmlEscape($issRetido).'</IssRetido>';
         $x .= '<ItemListaServico>' .($itemListaServico).'</ItemListaServico>';
-        $x .= $codigoCnae;
+        $x .= '<CodigoCnae>' .($codigoCnae).'</CodigoCnae>';
+ 
         $x .= $codigoTributacaoMun;
 
         $x .= '<Discriminacao>'.$this->xmlEscape($discriminacao).'</Discriminacao>';

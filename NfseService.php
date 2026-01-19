@@ -1,7 +1,8 @@
 <?php
 
-use NFSePrefeitura\NFSe\AssinadorXMLSeguro;
 use NFSePrefeitura\NFSe\PortoSeguro;
+use NFSePrefeitura\NFSe\AssinadorXMLSeguro;
+
 use NFePHP\Common\Certificate;
 
 class NfseService
@@ -10,7 +11,7 @@ class NfseService
     private ?string $certPath;
     private ?string $certPassword;
     private \SoapClient $client;
-    private  $assinador;
+
     public function __construct(?string $wsdl = null, ?string $certPath = null, ?string $certPassword = null)
     {
         $wsdlPath = $wsdl ?: 'app/ws/nfse.wsdl';
@@ -21,7 +22,7 @@ class NfseService
         $this->wsdl         = $wsdlPath;
         $this->certPath     = $certPath;
         $this->certPassword = $certPassword;
-    $this->assinador = new AssinadorXMLSeguro();
+
         $options = [
             'trace'        => 1,
             'exceptions'   => true,
@@ -40,19 +41,70 @@ class NfseService
         $this->client = new \SoapClient($this->wsdl, $options);
     }
 
-  
- 
+    /* =========================================================
+     * ASSINATURA (ABRASF)
+     * ========================================================= */
+    public function assinarXml(string $xml, ?string $certPath = null, ?string $certPassword = null, string $tag = 'InfDeclaracaoPrestacaoServico'): string
+    {
+        if (trim($xml) === '') {
+            throw new \InvalidArgumentException('O XML passado para assinatura está vazio.');
+        }
+
+        $certPath     = $certPath ?: $this->certPath;
+        $certPassword = $certPassword ?: $this->certPassword;
+
+        if (!$certPath || !file_exists($certPath)) {
+            throw new \InvalidArgumentException('Certificado não encontrado: ' . (string)$certPath);
+        }
+        if ($certPassword === null) {
+            throw new \InvalidArgumentException('Senha do certificado não informada.');
+        }
+
+        $certificate = Certificate::readPfx(file_get_contents($certPath), $certPassword);
+
+        $xml = \NFePHP\Common\Strings::clearXmlString($xml);
+
+        $algorithm = OPENSSL_ALGO_SHA1; // ABRASF legado
+        $canonical = [false, false, null, null];
+
+        return \NFePHP\Common\Signer::sign(
+            $certificate,
+            $xml,
+            $tag,
+            'Id',
+            $algorithm,
+            $canonical
+        );
+    }
+
+    /* =========================================================
+     * ENVIO SOAP (nfseCabecMsg + nfseDadosMsg)
+     * ========================================================= */
+    public function enviar(string $xmlAssinado, string $metodo, string $versao = '2.02')
+    {
+        $cabecalho = '<cabecalho xmlns="http://www.abrasf.org.br/nfse.xsd" versao="' . $this->xmlEscape($versao) . '">'
+            . '<versaoDados>' . $this->xmlEscape($versao) . '</versaoDados>'
+            . '</cabecalho>';
+
+        $params = [
+            'nfseCabecMsg' => $cabecalho,
+            'nfseDadosMsg' => $xmlAssinado
+        ];
+
+        return $this->client->__soapCall($metodo, [$params]);
+    }
+
     /* =========================================================
      * PROCESSAR (monta lote -> assina -> envia)
      * ========================================================= */
     public function processar($key)
     {
-      $nfse      = NfseRps::find($key);
+        $nfse      = NfseRps::find($key);
         if (!$nfse) {
             throw new \Exception("NFSe RPS não encontrado. Key: {$key}");
         }
 
-      $prestador = $nfse->nfse_emitente;
+        $prestador = $nfse->nfse_emitente;
         if (!$prestador) {
             throw new \Exception("Emitente/Prestador não encontrado para o RPS {$key}");
         }
@@ -77,25 +129,52 @@ class NfseService
         // 2) Gera XML do lote (sem assinatura)
         $portoSeguro = new PortoSeguro((string)$certPath, (string)$certPassword);
         $xml = $portoSeguro->gerarXmlLoteRps($dados);
-        self::salvar("01_inicial.xml", $xml);
+         $arquivoGerado =   self::salvar("01_inicial.xml", $xml);
+ exit;
+        // 3) Assina no nível InfDeclaracaoPrestacaoServico
+
+            // Certificado lido e validado pelo NFePHP
+
+
+        try {
  
-  $xmlAssinado = $this->assinador->assinarXML(
-        $xml,
-        'LoteRps',
-        $certPath,
-        $certPassword
-    );
-        self::salvar("02_assinado.xml", $xmlAssinado);
 
-        // 4) Envia (normalmente RecepcionarLoteRps ou RecepcionarLoteRpsSincrono)
-        $resposta = $this->enviar($xmlAssinado, 'RecepcionarLoteRps');
-        if (isset($resposta->outputXML)) {
-            self::salvar("03_resposta.xml", $resposta->outputXML);
-        } else {
-            self::salvar("03_resposta_dump.txt", print_r($resposta, true));
+
+$xmlLote = file_get_contents( $arquivoGerado);
+
+$assinador = new \NFSePrefeitura\NFSe\AssinadorXMLSeguro($certPath, $certPassword);
+
+$xmlAssinado = $assinador->assinarLoteRps($xmlLote);
+
+
+
+  $arquivoGeradoAssinado =   self::salvar("02_assinado.xml", $xmlAssinado);
+
+
+ 
+
+ 
+
+
+
+            self::salvar("02_assinado.xml", $xmlAssinado);
+
+
+
+            self::salvar("02_assinado.xml", $xmlAssinado);
+
+            // Enviando o XML assinado
+            $resposta = $this->enviar($xmlAssinado, 'RecepcionarLoteRps');
+            if (isset($resposta->outputXML)) {
+                self::salvar("03_resposta.xml", $resposta->outputXML);
+            } else {
+                self::salvar("03_resposta_dump.txt", print_r($resposta, true));
+            }
+
+            return $resposta;
+        } catch (Exception $e) {
+            echo "Erro ao assinar/enviar XML: " . $e->getMessage();
         }
-
-        return $resposta;
     }
 
     /* =========================================================
@@ -119,15 +198,15 @@ class NfseService
         $serv = $this->buildServicoAgregado($nfse, $prestador, $servicos);
 
         $tom = $this->buildTomador($tomador);
-
+        $Numero_lote = str_pad($nfse->id, 22, '0', STR_PAD_LEFT);
         $rps = [
-            'inf_id' => 'RPS' . (int)$nfse->id,
+            'inf_id' => 'Rps' . str_pad($nfse->id, 5, '0', STR_PAD_LEFT),
 
             'infRps' => [
                 'numero'      => (int)$nfse->id,
-                'serie'       => 'A',
+                'serie'       => 10,
                 'tipo'        => 1,
-           'dataEmissao' => (new DateTime('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d\TH:i:sP'),
+                'dataEmissao' => (new DateTime('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d\TH:i:sP'),
 
 
 
@@ -138,30 +217,30 @@ class NfseService
             // ====== CAMPOS DO SERVIÇO (NO NÍVEL DO RPS) ======
             'valorServicos'    => $serv['valorServicos'],
             'valorIss'         => $serv['valorIss'],
-            'aliquota'         => $serv['aliquota'],
-            'issRetido'        => $serv['issRetido'],
+            'aliquota'         =>  $serv['aliquota'] ?? 2,
+            'issRetido'        => 1 ?? $serv['issRetido'],
             'itemListaServico' => $serv['itemListaServico'],
-            'discriminacao'    => $serv['discriminacao'],
+            'discriminacao'    => 'Teste de Homologacao' ?? $serv['discriminacao'],
             'codigoMunicipio'  => $serv['codigoMunicipio'],
-            'exigibilidadeISS' => $serv['exigibilidadeISS'],
+            'exigibilidadeISS' => 3 ?? $serv['exigibilidadeISS'],
 
             // ===== REGIME =====
-                'regimeEspecialTributacao' =>  $prestador->regimeEspecialTributacao ?? 0,
-                'optanteSimplesNacional'   =>  $prestador->optanteSimplesNacional?? 0 ,
-                'incentivoFiscal'          =>  $prestador->incentivoFiscal ??  0,
-                'codigoCnae' => $prestador->codigocnae ?? null,
-                'codigoTributacaoMunicipio' => $nfse->codigo_tributacao_municipio ?? null, // ou de onde vier
-                'municipioIncidencia' =>$prestador->codigoMunicipio, // geralmen
+            'regimeEspecialTributacao' => 6 ?? $prestador->regimeEspecialTributacao ?? 0,
+            'optanteSimplesNacional'   =>  1 ?? $prestador->optanteSimplesNacional ?? 0,
+            'incentivoFiscal'          => 2,
+           'codigoCnae' => $prestador->codigocnae ?? '4520007',
+            'codigoTributacaoMunicipio' => $nfse->codigo_tributacao_municipio ?? null, // ou de onde vier
+            'municipioIncidencia' => $prestador->codigoMunicipio, // geralmen
 
             // ===== TOMADOR =====
             'tomador' => $tom,
         ];
 
         return [
-            'lote_id'           => 'Lote' . (int)$nfse->id,
-            'numeroLote'        => (int)$nfse->id,
+            'lote_id'           => 'Lote' . $Numero_lote,
+            'numeroLote'        => $nfse->id,
             'cnpjPrestador'     => $cnpjPrestador,
-            'inscricaoMunicipal'=> $inscMunPrestador,
+            'inscricaoMunicipal' => $inscMunPrestador,
             'quantidadeRps'     => 1,
             'rps'               => [$rps],
         ];
@@ -279,13 +358,13 @@ class NfseService
             'logradouro'     => (string)$tomador->logradouro,
             'numero'         => (string)$tomador->numero,
             'bairro'         => (string)$tomador->bairro,
-            'codigoMunicipio'=> (string)$tomador->codigoMunicipio,
+            'codigoMunicipio' => (string)$tomador->codigoMunicipio,
             'uf'             => (string)$tomador->uf,
             'cep'            => (string)$tomador->cep,
         ];
 
         // valida mínimos do endereço
-        foreach (['logradouro','numero','bairro','codigoMunicipio','uf','cep'] as $k) {
+        foreach (['logradouro', 'numero', 'bairro', 'codigoMunicipio', 'uf', 'cep'] as $k) {
             if (trim((string)$end[$k]) === '') {
                 throw new \Exception("Tomador.endereco.{$k} obrigatório e não informado.");
             }
@@ -305,14 +384,21 @@ class NfseService
      * UTIL
      * ========================================================= */
 
-    private static function salvar(string $nome, string $conteudo): void
-    {
-        $dir = "app/xml_nfse/";
-        if (!is_dir($dir)) {
-            mkdir($dir, 0777, true);
-        }
-        file_put_contents($dir . date("Ymd_His_") . $nome, $conteudo);
+   private static function salvar(string $nome, string $conteudo): string
+{
+    $dir = "app/xml_nfse/";
+
+    if (!is_dir($dir)) {
+        mkdir($dir, 0777, true);
     }
+
+    $arquivo = $dir . date("Ymd_His_") . $nome;
+
+    file_put_contents($arquivo, $conteudo);
+
+    return $arquivo; // retorna o nome/caminho do arquivo
+}
+
 
     private function onlyDigits(string $v): string
     {
@@ -329,20 +415,83 @@ class NfseService
         $texto = mb_convert_encoding((string)$texto, 'UTF-8', 'UTF-8');
 
         $mapa = [
-            'á'=>'a','à'=>'a','ã'=>'a','â'=>'a','ä'=>'a',
-            'é'=>'e','è'=>'e','ê'=>'e','ë'=>'e',
-            'í'=>'i','ì'=>'i','î'=>'i','ï'=>'i',
-            'ó'=>'o','ò'=>'o','õ'=>'o','ô'=>'o','ö'=>'o',
-            'ú'=>'u','ù'=>'u','û'=>'u','ü'=>'u',
-            'ç'=>'c',
-            'Á'=>'A','À'=>'A','Ã'=>'A','Â'=>'A','Ä'=>'A',
-            'É'=>'E','È'=>'E','Ê'=>'E','Ë'=>'E',
-            'Í'=>'I','Ì'=>'I','Î'=>'I','Ï'=>'I',
-            'Ó'=>'O','Ò'=>'O','Õ'=>'O','Ô'=>'O','Ö'=>'O',
-            'Ú'=>'U','Ù'=>'U','Û'=>'U','Ü'=>'U',
-            'Ç'=>'C',
+            'á' => 'a',
+            'à' => 'a',
+            'ã' => 'a',
+            'â' => 'a',
+            'ä' => 'a',
+            'é' => 'e',
+            'è' => 'e',
+            'ê' => 'e',
+            'ë' => 'e',
+            'í' => 'i',
+            'ì' => 'i',
+            'î' => 'i',
+            'ï' => 'i',
+            'ó' => 'o',
+            'ò' => 'o',
+            'õ' => 'o',
+            'ô' => 'o',
+            'ö' => 'o',
+            'ú' => 'u',
+            'ù' => 'u',
+            'û' => 'u',
+            'ü' => 'u',
+            'ç' => 'c',
+            'Á' => 'A',
+            'À' => 'A',
+            'Ã' => 'A',
+            'Â' => 'A',
+            'Ä' => 'A',
+            'É' => 'E',
+            'È' => 'E',
+            'Ê' => 'E',
+            'Ë' => 'E',
+            'Í' => 'I',
+            'Ì' => 'I',
+            'Î' => 'I',
+            'Ï' => 'I',
+            'Ó' => 'O',
+            'Ò' => 'O',
+            'Õ' => 'O',
+            'Ô' => 'O',
+            'Ö' => 'O',
+            'Ú' => 'U',
+            'Ù' => 'U',
+            'Û' => 'U',
+            'Ü' => 'U',
+            'Ç' => 'C',
         ];
 
         return strtr($texto, $mapa);
     }
+
+   private function debugLote(string $xml): void {
+    $dom = new DOMDocument('1.0', 'UTF-8');
+    $dom->preserveWhiteSpace = true;
+    $dom->loadXML($xml);
+
+    $xp = new DOMXPath($dom);
+    $xp->registerNamespace('ns', 'http://www.abrasf.org.br/nfse.xsd');
+    $xp->registerNamespace('ds', 'http://www.w3.org/2000/09/xmldsig#');
+
+    $lote = $xp->query('//ns:LoteRps')->item(0) ?: $dom->getElementsByTagName('LoteRps')->item(0);
+    if (!$lote) {
+        echo "❌ LoteRps NÃO encontrado\n";
+        return;
+    }
+
+    $id = $lote->attributes?->getNamedItem('Id')?->nodeValue;
+    echo "✅ LoteRps encontrado. Id = " . var_export($id, true) . "\n";
+
+    $refs = $xp->query('//ds:Reference/@URI');
+    echo "🔎 References encontradas:\n";
+    foreach ($refs as $r) {
+        echo " - " . $r->nodeValue . "\n";
+    }
+
+    $sigs = $xp->query('//ds:Signature');
+    echo "🧾 Total <Signature>: " . $sigs->length . "\n";
+}
+
 }
