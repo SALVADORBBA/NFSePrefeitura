@@ -9,9 +9,9 @@ class ProcessarFiscalPortoSeguro {
     private $jsonData;
     private $nfseService;
 
-    public function __construct($jsonData) {
+    public function __construct($jsonData, $nfseService) {
         $this->jsonData = $jsonData;
-        $this->nfseService = new NfseService();
+        $this->nfseService = $nfseService;
     }
 
     public function processar() {
