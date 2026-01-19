@@ -138,13 +138,14 @@ class ProcessarFiscalPortoSeguro {
     
     private function processSingleRps(array $rps): array
     {
-        $this->validateRps($rps);
+        $index = array_search($rps, $this->jsonData['rps'], true);
+        $this->validateRps($rps, $index !== false ? $index : 0);
         
         return [
             'valorServicos' => $this->normalizeFloat($rps['valorServicos'] ?? 0),
             'valorIss' => $this->normalizeFloat($rps['valorIss'] ?? 0),
             'aliquota' => $this->normalizeFloat($rps['aliquota'] ?? 0),
-            'tomador' => $this->validateTomador($rps['tomador'])
+            'tomador' => $this->validateTomador($rps['tomador'], $index !== false ? $index : 0)
         ];
     }
 
