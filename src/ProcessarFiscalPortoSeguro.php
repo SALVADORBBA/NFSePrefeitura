@@ -65,6 +65,65 @@ class ProcessarFiscalPortoSeguro {
             $this->validateRps($rps, $index);
         }
     }
+    
+    private function validateRps(array $rps, int $index): void
+    {
+        $requiredFields = [
+            'inf_id',
+            'infRps',
+            'tomador',
+            'discriminacao'
+        ];
+
+        foreach ($requiredFields as $field) {
+            if (empty($rps[$field])) {
+                throw new NfseProcessingException("Field {$field} is required in RPS at index {$index}");
+            }
+        }
+
+        if (!is_array($rps['infRps'])) {
+            throw new NfseProcessingException("infRps must be an array in RPS at index {$index}");
+        }
+
+        if (!is_array($rps['tomador'])) {
+            throw new NfseProcessingException("tomador must be an array in RPS at index {$index}");
+        }
+
+        $this->validateTomador($rps['tomador'], $index);
+    }
+    
+    private function validateTomador(array $tomador, int $rpsIndex): void
+    {
+        $requiredFields = [
+            'cpfCnpj',
+            'razaoSocial',
+            'endereco'
+        ];
+
+        foreach ($requiredFields as $field) {
+            if (empty($tomador[$field])) {
+                throw new NfseProcessingException("Field tomador.{$field} is required in RPS at index {$rpsIndex}");
+            }
+        }
+
+        if (!is_array($tomador['endereco'])) {
+            throw new NfseProcessingException("tomador.endereco must be an array in RPS at index {$rpsIndex}");
+        }
+
+        $requiredAddressFields = [
+            'logradouro',
+            'numero',
+            'bairro',
+            'uf',
+            'cep'
+        ];
+
+        foreach ($requiredAddressFields as $field) {
+            if (empty($tomador['endereco'][$field])) {
+                throw new NfseProcessingException("Field tomador.endereco.{$field} is required in RPS at index {$rpsIndex}");
+            }
+        }
+    }
 
     private function processRpsList(): array
     {
