@@ -124,13 +124,13 @@ class NfseService
         $certPassword = $prestador->cert_senha_plain;
 
         // 1) Monta dados no formato que o builder PortoSeguro espera (SEM lista 'servicos')
-        $dados = $this->buildDadosLote($nfse, $prestador, $tomador, $servicos);
+    $dados = $this->buildDadosLote($nfse, $prestador, $tomador, $servicos);
 
         // 2) Gera XML do lote (sem assinatura)
         $portoSeguro = new PortoSeguro((string)$certPath, (string)$certPassword);
         $xml = $portoSeguro->gerarXmlLoteRps($dados);
          $arquivoGerado =   self::salvar("01_inicial.xml", $xml);
- exit;
+ 
         // 3) Assina no nível InfDeclaracaoPrestacaoServico
 
             // Certificado lido e validado pelo NFePHP
@@ -198,52 +198,67 @@ $xmlAssinado = $assinador->assinarLoteRps($xmlLote);
         $serv = $this->buildServicoAgregado($nfse, $prestador, $servicos);
 
         $tom = $this->buildTomador($tomador);
-        $Numero_lote = str_pad($nfse->id, 22, '0', STR_PAD_LEFT);
-        $rps = [
-            'inf_id' => 'Rps' . str_pad($nfse->id, 5, '0', STR_PAD_LEFT),
-
-            'infRps' => [
-                'numero'      => (int)$nfse->id,
-                'serie'       => 10,
-                'tipo'        => 1,
-                'dataEmissao' => (new DateTime('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d\TH:i:sP'),
 
 
 
-            ],
+            $serie  = 'A';
+            $numero = 304;
+            $cnpj   = $prestador->cnpj;
 
-            'competencia' => date('Ym01'),
+            // RPS: alfanumérico, até 20 chars
+            $numeroRpsGerado = $this->gerarNumeroRps($serie, $numero, $cnpj);
 
-            // ====== CAMPOS DO SERVIÇO (NO NÍVEL DO RPS) ======
-            'valorServicos'    => $serv['valorServicos'],
-            'valorIss'         => $serv['valorIss'],
-            'aliquota'         =>  $serv['aliquota'] ?? 2,
-            'issRetido'        => 1 ?? $serv['issRetido'],
-            'itemListaServico' => $serv['itemListaServico'],
-            'discriminacao'    => 'Teste de Homologacao' ?? $serv['discriminacao'],
-            'codigoMunicipio'  => $serv['codigoMunicipio'],
-            'exigibilidadeISS' => 3 ?? $serv['exigibilidadeISS'],
+ 
 
-            // ===== REGIME =====
-            'regimeEspecialTributacao' => 6 ?? $prestador->regimeEspecialTributacao ?? 0,
-            'optanteSimplesNacional'   =>  1 ?? $prestador->optanteSimplesNacional ?? 0,
-            'incentivoFiscal'          => 2,
-           'codigoCnae' => $prestador->codigocnae ?? '4520007',
-            'codigoTributacaoMunicipio' => $nfse->codigo_tributacao_municipio ?? null, // ou de onde vier
-            'municipioIncidencia' => $prestador->codigoMunicipio, // geralmen
 
-            // ===== TOMADOR =====
-            'tomador' => $tom,
-        ];
+        $rpsItem = [
+    'inf_id' => $numeroRpsGerado,
 
-        return [
-            'lote_id'           => 'Lote' . $Numero_lote,
-            'numeroLote'        => $nfse->id,
-            'cnpjPrestador'     => $cnpjPrestador,
-            'inscricaoMunicipal' => $inscMunPrestador,
-            'quantidadeRps'     => 1,
-            'rps'               => [$rps],
-        ];
+    'infRps' => [
+        'numero'      => $numero, // sequencial interno
+        'serie'       => $serie,
+        'tipo'        => 1,
+        'dataEmissao' => (new DateTime(
+            'now',
+            new DateTimeZone('America/Sao_Paulo')
+        ))->format('Y-m-d\TH:i:sP'),
+    ],
+
+    'competencia' => date('Ym01'),
+
+    // ===== SERVIÇO =====
+    'valorServicos'    => $serv['valorServicos'],
+    'valorIss'         => $serv['valorIss'],
+    'aliquota'         => $serv['aliquota'],
+    'issRetido'        => $serv['issRetido'],
+    'itemListaServico' => $serv['itemListaServico'],
+    'discriminacao'    => $serv['discriminacao'],
+    'codigoMunicipio'  => $serv['codigoMunicipio'],
+    'exigibilidadeISS' => $serv['exigibilidadeISS'],
+
+    // ===== REGIME =====
+    'regimeEspecialTributacao' => 6 ?? $prestador->regimeEspecialTributacao ?? 0,
+    'optanteSimplesNacional'   => 1 ?? $prestador->optanteSimplesNacional ?? 0,
+    'incentivoFiscal'          => 2,
+    'codigoCnae'               => $prestador->codigocnae ?? '4520007',
+    'codigoTributacaoMunicipio'=> '1401' ?? $nfse->codigo_tributacao_municipio ?? null,
+    'municipioIncidencia'      =>'2925303'??  $prestador->codigoMunicipio,
+
+    // ===== TOMADOR =====
+    'tomador' => $tom,
+];
+
+
+$loteN=date('ymdHis') . random_int(100, 999);
+return [
+    'lote_id'            => 'Lote' . $loteN, // Id XML
+    'numeroLote'         => $loteN,          // 🔥 VALIDA DUPLICIDADE
+    'cnpjPrestador'      => $cnpjPrestador,
+    'inscricaoMunicipal' => $inscMunPrestador,
+    'quantidadeRps'      => 1,
+    'rps'                => [$rpsItem],
+];
+
     }
 
     /**
@@ -257,12 +272,12 @@ $xmlAssinado = $assinador->assinarLoteRps($xmlLote);
     {
         $totalServ   = 0.0;
         $totalIss    = 0.0;
-        $aliquota    = null;
+        $aliquota    = 2;
         $issRetido   = 2; // default: não retido
         $discLinhas  = [];
 
-        $codigoMunicipio  = null;
-        $exigibilidadeISS = null;
+        $codigoMunicipio  = 2925303;
+        $exigibilidadeISS = 1;
 
         $itemListaServico = trim((string)$nfse->itemListaServico);
         if ($itemListaServico === '') {
@@ -285,10 +300,7 @@ $xmlAssinado = $assinador->assinarLoteRps($xmlLote);
                 $aliquota = $pAliq;
             }
 
-            // se qualquer item for retido, marca como retido
-            if ((int)($s->iss_retido ?? 0) === 1) {
-                $issRetido = 1;
-            }
+          
 
             // municipio / exigibilidade: pega do primeiro não vazio
             if (!$codigoMunicipio && !empty($s->codigo_municipio)) {
@@ -315,11 +327,11 @@ $xmlAssinado = $assinador->assinarLoteRps($xmlLote);
             throw new \Exception("exigibilidadeISS obrigatório não informado nos serviços do RPS {$nfse->id}");
         }
 
-        $discriminacao = trim(implode("\n", $discLinhas));
-        if ($discriminacao === '') {
+    
+     
             // fallback: pelo menos uma descrição
-            $discriminacao = '1- Servico';
-        }
+            $discriminacao = 'SERVIÇOS PRESTADOS NA O.S.  VEÍCULO: [XPTO] - Ford KA 1.0 Flex 12V 5p';
+       
 
         // Se por algum motivo não veio aliquota, usa 0.0000
         if ($aliquota === null) {
@@ -465,7 +477,7 @@ $xmlAssinado = $assinador->assinarLoteRps($xmlLote);
 
         return strtr($texto, $mapa);
     }
-
+ 
    private function debugLote(string $xml): void {
     $dom = new DOMDocument('1.0', 'UTF-8');
     $dom->preserveWhiteSpace = true;
@@ -492,6 +504,33 @@ $xmlAssinado = $assinador->assinarLoteRps($xmlLote);
 
     $sigs = $xp->query('//ds:Signature');
     echo "🧾 Total <Signature>: " . $sigs->length . "\n";
+}
+ private function gerarNumeroRps(
+    string $serie,
+    int $numero,
+    string $cnpj
+): string {
+    // Remove qualquer coisa que não seja número
+    $cnpj = preg_replace('/\D/', '', $cnpj);
+
+    // Prefixo do CNPJ (3 dígitos para economizar espaço)
+    $cnpjPrefixo = substr($cnpj, 0, 3);
+
+    // Timestamp compacto: yymmddhhmmss (12 chars)
+    $timestamp = date('ymdHis');
+
+    // Aleatório (2 chars)
+    $aleatorio = random_int(10, 99);
+
+    // Montagem
+    $rps = $serie
+         . str_pad($numero, 3, '0', STR_PAD_LEFT)
+         . $cnpjPrefixo
+         . $timestamp
+         . $aleatorio;
+
+    // Garante no máximo 20 caracteres
+    return substr($rps, 0, 20);
 }
 
 }
