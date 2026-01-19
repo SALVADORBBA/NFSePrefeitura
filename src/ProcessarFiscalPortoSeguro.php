@@ -127,10 +127,14 @@ class ProcessarFiscalPortoSeguro {
     private function assinarXml($xml) {
         try {
             // Criar instância do assinador com certificado e senha
-            $assinador = new PortoSeguroSigner($this->nfseService->certPath, $this->nfseService->certPassword);
+            $assinador = new PortoSeguroSigner(
+                $this->nfseService->certPath, 
+                $this->nfseService->certPassword,
+                $this->nfseService->wsdl
+            );
             
-            // Assinar o XML no nível InfDeclaracaoPrestacaoServico
-            $xmlAssinado = $assinador->assinarLoteRps($xml);
+            // Assinar o XML usando o método correto
+            $xmlAssinado = $assinador->sign($xml);
             
             // Salvar XML assinado para debug
             $this->salvarXml("02_assinado.xml", $xmlAssinado);
