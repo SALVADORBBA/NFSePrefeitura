@@ -52,7 +52,7 @@ $jsonData = [
 ];
 
 // Configurações do NfseService
-$wsdlPath = 'caminho/para/nfse.wsdl';
+$wsdlPath = __DIR__ . '/../../documetos/porto-seguro/NFS-e.wsdl';
 $certPath = 'caminho/para/certificado.pfx';
 $certPassword = 'senha_do_certificado';
 
