@@ -17,8 +17,6 @@ use InvalidArgumentException;
  */
 class Natal
 {
-    private const WSDL = 'https://wsnfsev1.natal.rn.gov.br:8444/axis2/services/NfseWSServiceV1?wsdl';
-
     private string $certPath;
     private string $certPassword;
 
@@ -26,47 +24,6 @@ class Natal
     {
         $this->certPath     = $certPath;
         $this->certPassword = $certPassword;
-    }
-
-    private function client(): SoapClient
-    {
-        return new SoapClient(self::WSDL, [
-            'soap_version' => SOAP_1_1,
-            'trace'        => true,
-            'exceptions'   => true,
-            'cache_wsdl'   => WSDL_CACHE_NONE,
-            'stream_context' => stream_context_create([
-                'ssl' => [
-                    'local_cert'        => $this->certPath,
-                    'passphrase'        => $this->certPassword,
-                    'verify_peer'       => false,
-                    'verify_peer_name'  => false,
-                    'allow_self_signed' => true,
-                ]
-            ])
-        ]);
-    }
-
-    public function enviarLoteRps(array $dados): object
-    {
-        $client = $this->client();
-        $xml    = $this->gerarXmlLoteRps($dados);
-
-        $cabecalho = '<cabecalho xmlns="http://www.abrasf.org.br/nfse.xsd" versao="2.04"><versaoDados>2.02</versaoDados></cabecalho>';
-        $params = [
-            'nfseCabecMsg' => $cabecalho,
-            'nfseDadosMsg' => $xml
-        ];
-
-        try {
-            return $client->__soapCall('RecepcionarLoteRps', [$params]);
-        } catch (SoapFault $e) {
-            throw new Exception(
-                "ERRO SOAP:\n{$e->getMessage()}\n\nREQUEST:\n{$client->__getLastRequest()}\n\nRESPONSE:\n{$client->__getLastResponse()}",
-                0,
-                $e
-            );
-        }
     }
 
     public function gerarXmlLoteRps(array $dados): string

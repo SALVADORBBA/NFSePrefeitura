@@ -2,7 +2,8 @@
 
 use NFSePrefeitura\NFSe\PFNatal\Natal;
  use NFSePrefeitura\NFSe\PFNatal\AssinaturaNatal;
- 
+use NFSePrefeitura\NFSe\PFNatal\EnvioNatal;
+
 class GerarAssinarNatalXML
 {
     private string $certPath;
@@ -16,44 +17,65 @@ class GerarAssinarNatalXML
 
     public function create(): string
     {
-        // ===============================
-        // PASSO 1 - Dados
-        // ===============================
-        $jsonData = $this->getJsonData();
-        echo "<pre>PASSO 1 - dados carregados</pre>";
+        try {
+            // PASSO 1 - Obter dados
+            $jsonData = $this->getJsonData();
+            $this->log("PASSO 1 - Dados carregados");
 
-        // ===============================
-        // PASSO 2 - Gerar XML
-        // ===============================
-        $Natal = new Natal(
-            $this->certPath,
-            $this->certPassword
-        );
-
-        $xml = $Natal->gerarXmlLoteRps($jsonData);
-
-        $arquivoXml = $this->salvar(
-            '01_inicial.xml',
-            'app/xml_nfse/Natal/Inicial',
-            $xml
-        );
-
-        echo "<pre>PASSO 2 - XML gerado\nArquivo: {$arquivoXml}</pre>";
- 
-
-      $Assinatura = new AssinaturaNatal($this->certPath, $this->certPassword);
-      $xmlAssinado = $Assinatura->assinarLoteRps($xml);
-        $arquivoAssinado = $this->salvar(
-            '02_assinado.xml',
-            'app/xml_nfse/Natal/Assinados',
-            $xmlAssinado
-        );
- 
-        echo "<pre>PASSO 3 - XML gerado\nArquivo: {$arquivoAssinado}</pre>";
- 
-
+            // PASSO 2 - Gerar XML
+            $xml = $this->gerarXml($jsonData);
+            
+            // PASSO 3 - Assinar XML
+            $xmlAssinado = $this->assinarXml($xml);
+            
+            // PASSO 4 - Enviar para webservice
+            return $this->enviarParaWebservice($xmlAssinado);
+            
+        } catch (Exception $e) {
+            $this->log("ERRO: " . $e->getMessage());
+            throw $e;
+        }
+    }
+    
+    private function gerarXml(array $dados): string
+    {
+        $Natal = new Natal($this->certPath, $this->certPassword);
+        $xml = $Natal->gerarXmlLoteRps($dados);
+        
+        $arquivo = $this->salvar('01_inicial.xml', 'app/xml_nfse/Natal/Inicial', $xml);
+        $this->log("PASSO 2 - XML gerado\nArquivo: {$arquivo}");
+        
         return $xml;
     }
+    
+    private function assinarXml(string $xml): string
+    {
+        $Assinatura = new AssinaturaNatal($this->certPath, $this->certPassword);
+        $xmlAssinado = $Assinatura->assinarLoteRps($xml);
+        
+        $arquivo = $this->salvar('02_assinado.xml', 'app/xml_nfse/Natal/Assinados', $xmlAssinado);
+        $this->log("PASSO 3 - XML assinado\nArquivo: {$arquivo}");
+        
+        return $xmlAssinado;
+    }
+    
+    private function enviarParaWebservice(string $xmlAssinado): string
+    {
+        $Natal = new EnvioNatal($this->certPath, $this->certPassword);
+        $response = $Natal->enviarLoteRps($xmlAssinado);
+        
+        $arquivo = $this->salvar('03_resposta.xml', 'app/xml_nfse/Natal/Respostas', $response);
+        $this->log("PASSO 4 - Enviado para webservice\nArquivo: {$arquivo}");
+        
+        return $response;
+    }
+    
+    private function log(string $mensagem): void
+    {
+        echo "<pre>{$mensagem}</pre>";
+    }
+
+ 
 
     // =====================================================
     // Dados simulados (depois pode vir do banco)
