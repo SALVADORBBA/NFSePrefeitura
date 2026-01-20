@@ -109,7 +109,7 @@ class GerarAssinarNatalXML
                 ]
             ]
         ];
-    }
+    } 
 
     // =====================================================
     // Salvar arquivos
