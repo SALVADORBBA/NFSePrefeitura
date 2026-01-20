@@ -1,5 +1,5 @@
 <?php
-namespace NFSePrefeitura\NFSe;
+namespace NFSePrefeitura\NFSe\PFChapeco;
 
 use SoapClient;
 use SoapFault;
@@ -62,18 +62,11 @@ class Chapeco
     public function gerarXmlLoteRps($dados)
     {
         $xml  = '<?xml version="1.0" encoding="UTF-8"?>';
-        $xml .= '<EnviarLoteRpsEnvio xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.abrasf.org.br/nfse.xsd">';
-        $xml .= '<LoteRps versao="2.04">';
-        $xml .= '<NumeroLote>' . $dados['numeroLote'] . '</NumeroLote>';
-        $xml .= '<Prestador>';
-        $xml .= '<CpfCnpj><Cnpj>' . $dados['cnpjPrestador'] . '</Cnpj></CpfCnpj>';
-        $xml .= '<InscricaoMunicipal>' . $dados['inscricaoMunicipal'] . '</InscricaoMunicipal>';
-        $xml .= '</Prestador>';
-        $xml .= '<QuantidadeRps>' . $dados['quantidadeRps'] . '</QuantidadeRps>';
-        $xml .= '<ListaRps>';
+        $xml .= '<GerarNfseEnvio xmlns="http://www.abrasf.org.br/nfse.xsd">';
+        
         foreach ($dados['rps'] as $rps) {
             $xml .= '<Rps>';
-            $xml .= '<InfDeclaracaoPrestacaoServico Id="' . $rps['inf_id'] . '">';
+            $xml .= '<InfDeclaracaoPrestacaoServico>';
             $xml .= '<Rps>';
             $xml .= '<IdentificacaoRps>';
             $xml .= '<Numero>' . $rps['infRps']['numero'] . '</Numero>';
@@ -84,6 +77,7 @@ class Chapeco
             $xml .= '<Status>' . ($rps['status'] ?? '1') . '</Status>';
             $xml .= '</Rps>';
             $xml .= '<Competencia>' . $rps['competencia'] . '</Competencia>';
+            
             $xml .= '<Servico>';
             $xml .= '<Valores>';
             $xml .= '<ValorServicos>' . $rps['valorServicos'] . '</ValorServicos>';
@@ -179,9 +173,8 @@ class Chapeco
             $xml .= '</InfDeclaracaoPrestacaoServico>';
             $xml .= '</Rps>';
         }
-        $xml .= '</ListaRps>';
-        $xml .= '</LoteRps>';
-        $xml .= '</EnviarLoteRpsEnvio>';
+        $xml .= '</Rps>';
+        $xml .= '</GerarNfseEnvio>';
         return $xml;
     }
 }

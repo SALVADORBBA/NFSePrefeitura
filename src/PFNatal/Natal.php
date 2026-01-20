@@ -4,6 +4,7 @@ namespace NFSePrefeitura\NFSe\PFNatal;
 use SoapClient;
 use SoapFault;
 use Exception;
+use InvalidArgumentException;
 /**
  * Classe Natal - Implementação do padrão ABRASF para a Prefeitura de Natal - RN
  * Autor: Adaptado por Salvador BBA
@@ -70,18 +71,31 @@ class Natal
 
     public function gerarXmlLoteRps(array $dados): string
     {
-        $xml  = '<?xml version="1.0" encoding="utf-8"?>';
+        if (!isset($dados['lote_id'], $dados['numeroLote'], $dados['cnpjPrestador'], 
+            $dados['inscricaoMunicipal'], $dados['quantidadeRps'], $dados['rps'])) {
+            throw new InvalidArgumentException('Dados obrigatórios do lote não informados');
+        }
+
+        $xml  = '<?xml version="1.0" encoding="UTF-8"?>';
         $xml .= '<EnviarLoteRpsEnvio xmlns="http://www.abrasf.org.br/ABRASF/arquivos/nfse.xsd">';
-        $xml .= '<LoteRps Id="' . $dados['lote_id'] . '">';
-        $xml .= '<NumeroLote>' . $dados['numeroLote'] . '</NumeroLote>';
-        $xml .= '<Cnpj>' . $dados['cnpjPrestador'] . '</Cnpj>';
-        $xml .= '<InscricaoMunicipal>' . $dados['inscricaoMunicipal'] . '</InscricaoMunicipal>';
-        $xml .= '<QuantidadeRps>' . $dados['quantidadeRps'] . '</QuantidadeRps>';
+        $xml .= '<LoteRps Id="lote_' . $dados['lote_id'] . '">';
+        $xml .= '<NumeroLote>' . preg_replace('/[^0-9]/', '', $dados['numeroLote']) . '</NumeroLote>';
+        $xml .= '<Cnpj>' . preg_replace('/[^0-9]/', '', $dados['cnpjPrestador']) . '</Cnpj>';
+        $xml .= '<InscricaoMunicipal>' . preg_replace('/[^0-9]/', '', $dados['inscricaoMunicipal']) . '</InscricaoMunicipal>';
+        $xml .= '<QuantidadeRps>' . (int)$dados['quantidadeRps'] . '</QuantidadeRps>';
         $xml .= '<ListaRps>';
 
         foreach ($dados['rps'] as $rps) {
+            if (!isset($rps['inf_id'], $rps['infRps'], $rps['naturezaOperacao'], 
+                $rps['optanteSimplesNacional'], $rps['incentivadorCultural'], $rps['status'],
+                $rps['valorServicos'], $rps['tomador'])) {
+                throw new InvalidArgumentException('Dados obrigatórios do RPS não informados');
+            }
+
             $xml .= '<Rps>';
-            $xml .= '<InfRps Id="' . $rps['inf_id'] . '">';
+            $xml .= '<InfDeclaracaoPrestacaoServico Id="rps_' . $rps['inf_id'] . '">';
+            $xml .= '<Rps>';
+            $xml .= '<InfRps Id="rps_' . $rps['inf_id'] . '">';
             $xml .= '<IdentificacaoRps>';
             $xml .= '<Numero>' . $rps['infRps']['numero'] . '</Numero>';
             $xml .= '<Serie>' . $rps['infRps']['serie'] . '</Serie>';
@@ -95,14 +109,18 @@ class Natal
             $xml .= '<Servico>';
             $xml .= '<Valores>';
             $xml .= '<ValorServicos>' . number_format($rps['valorServicos'], 2, '.', '') . '</ValorServicos>';
+            $xml .= '<ValorDeducoes>0.00</ValorDeducoes>';
             $xml .= '<ValorPis>' . number_format($rps['valorPis'], 2, '.', '') . '</ValorPis>';
             $xml .= '<ValorCofins>' . number_format($rps['valorCofins'], 2, '.', '') . '</ValorCofins>';
             $xml .= '<ValorCsll>' . number_format($rps['valorCsll'], 2, '.', '') . '</ValorCsll>';
+            $xml .= '<ValorIr>0.00</ValorIr>';
             $xml .= '<IssRetido>' . $rps['issRetido'] . '</IssRetido>';
             $xml .= '<ValorIss>' . number_format($rps['valorIss'], 2, '.', '') . '</ValorIss>';
             $xml .= '<ValorIssRetido>' . number_format($rps['valorIssRetido'], 2, '.', '') . '</ValorIssRetido>';
+            $xml .= '<OutrasRetencoes>0.00</OutrasRetencoes>';
             $xml .= '<BaseCalculo>' . number_format($rps['baseCalculo'], 2, '.', '') . '</BaseCalculo>';
             $xml .= '<Aliquota>' . number_format($rps['aliquota'], 2, '.', '') . '</Aliquota>';
+            $xml .= '<ValorLiquidoNfse>' . number_format($rps['valorServicos'], 2, '.', '') . '</ValorLiquidoNfse>';
             $xml .= '<DescontoIncondicionado>' . number_format($rps['descontoIncondicionado'], 2, '.', '') . '</DescontoIncondicionado>';
             $xml .= '<DescontoCondicionado>' . number_format($rps['descontoCondicionado'], 2, '.', '') . '</DescontoCondicionado>';
             $xml .= '</Valores>';
@@ -132,6 +150,8 @@ class Natal
             $xml .= '</Endereco>';
             $xml .= '</Tomador>';
             $xml .= '</InfRps>';
+            $xml .= '</Rps>';
+            $xml .= '</InfDeclaracaoPrestacaoServico>';
             $xml .= '</Rps>';
         }
 

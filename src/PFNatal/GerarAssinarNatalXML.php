@@ -1,8 +1,8 @@
 <?php
 
 use NFSePrefeitura\NFSe\PFNatal\Natal;
+ use NFSePrefeitura\NFSe\PFNatal\AssinaturaNatal;
  
-
 class GerarAssinarNatalXML
 {
     private string $certPath;
@@ -34,27 +34,25 @@ class GerarAssinarNatalXML
 
         $arquivoXml = $this->salvar(
             '01_inicial.xml',
-            'app/xml_nfse/Natal',
+            'app/xml_nfse/Natal/Inicial',
             $xml
         );
 
         echo "<pre>PASSO 2 - XML gerado\nArquivo: {$arquivoXml}</pre>";
+ 
 
-        // ===============================
-        // PASSO 3 - Assinar XML
-        // ===============================
-        $Assinatura = new \NFSePrefeitura\NFSe\PFNatal\AssinaturaNatal();
-        $xmlAssinado = $Assinatura->assinarXml($xml, $this->certPath, $this->certPassword);
-
-        $arquivoXmlAssinado = $this->salvar(
+      $Assinatura = new AssinaturaNatal($this->certPath, $this->certPassword);
+      $xmlAssinado = $Assinatura->assinarLoteRps($xml);
+        $arquivoAssinado = $this->salvar(
             '02_assinado.xml',
-            'app/xml_nfse/Natal',
+            'app/xml_nfse/Natal/Assinados',
             $xmlAssinado
         );
+ 
+        echo "<pre>PASSO 3 - XML gerado\nArquivo: {$arquivoAssinado}</pre>";
+ 
 
-        echo "<pre>PASSO 3 - XML assinado\nArquivo: {$arquivoXmlAssinado}</pre>";
-
-        return $xmlAssinado;
+        return $xml;
     }
 
     // =====================================================
@@ -77,20 +75,29 @@ class GerarAssinarNatalXML
                         'tipo' => 1,
                         'dataEmissao' => '2026-01-19T07:34:53-03:00'
                     ],
-                    'competencia' => '20260101',
+                    'naturezaOperacao' => '1',
+                    'incentivadorCultural' => '2',
+                    'status' => '1',
                     'valorServicos' => 3.50,
+                    'valorPis' => 0,
+                    'valorCofins' => 0,
+                    'valorCsll' => 0,
                     'valorIss' => 0,
+                    'valorIssRetido' => 0,
+                    'baseCalculo' => 3.50,
                     'aliquota' => 2,
                     'issRetido' => 2,
+                    'descontoIncondicionado' => 0,
+                    'descontoCondicionado' => 0,
                     'itemListaServico' => '1401',
                     'discriminacao' => 'SERVIÇOS PRESTADOS NA O.S.',
                     'codigoMunicipio' => '2925303',
+                    'codigoTributacaoMunicipio' => '1401',
                     'exigibilidadeISS' => '1',
                     'regimeEspecialTributacao' => 6,
                     'optanteSimplesNacional' => 1,
                     'incentivoFiscal' => 2,
                     'codigoCnae' => '4520007',
-                    'codigoTributacaoMunicipio' => '1401',
                     'municipioIncidencia' => '2925303',
                     'tomador' => [
                         'cpfCnpj' => '57219214553',
@@ -109,7 +116,7 @@ class GerarAssinarNatalXML
                 ]
             ]
         ];
-    } 
+    }
 
     // =====================================================
     // Salvar arquivos
