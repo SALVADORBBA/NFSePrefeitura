@@ -1,5 +1,5 @@
 <?php
-namespace NFSePrefeitura\NFSe;
+namespace NFSePrefeitura\NFSe\PFPortoSeguro;
 
 use SoapClient;
 use SoapFault;

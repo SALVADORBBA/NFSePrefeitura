@@ -1,6 +1,6 @@
 <?php
 
-namespace NFSePrefeitura\NFSe;
+namespace NFSePrefeitura\NFSe\PFPortoSeguro;
 
 use DOMDocument;
 use DOMXPath;

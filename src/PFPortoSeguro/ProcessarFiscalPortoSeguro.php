@@ -1,10 +1,10 @@
 <?php
 
-namespace NFSePrefeitura\NFSe;
+namespace NFSePrefeitura\NFSe\PFPortoSeguro;
 
-use NFSePrefeitura\NFSe\PortoSeguro;
-use NFSePrefeitura\NFSe\AssinadorXMLSeguro;
-use NFSePrefeitura\NFSe\Exceptions\NfseProcessingException;
+use NFSePrefeitura\NFSe\PFPortoSeguro\PortoSeguro;
+use NFSePrefeitura\NFSe\PFPortoSeguro\AssinadorXMLSeguro;
+use NFSePrefeitura\NFSe\PFPortoSeguro\Exceptions\NfseProcessingException;
 
 class ProcessarFiscalPortoSeguro
 {
