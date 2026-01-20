@@ -1,5 +1,0 @@
-<EnviarLoteRpsResposta xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.abrasf.org.br/nfse.xsd">
-  <NumeroLote>200</NumeroLote>
-  <DataRecebimento>2017-05-08T11:33:05.2653279-03:00</DataRecebimento>
-  <Protocolo>1494253985266</Protocolo>
-</EnviarLoteRpsResposta>
