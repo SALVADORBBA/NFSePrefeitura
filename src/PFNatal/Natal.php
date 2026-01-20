@@ -1,6 +1,6 @@
 <?php
-namespace NFSePrefeitura\NFSe;
-
+namespace NFSePrefeitura\NFSe\PFNatal;
+ 
 use SoapClient;
 use SoapFault;
 use Exception;
