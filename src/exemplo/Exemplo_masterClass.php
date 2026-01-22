@@ -29,5 +29,5 @@ $dif = $master->diferencaPercentual('200', '50'); // 25
 echo "Percentual de diferença: $dif%\n";
 
 // Normalizar documento
-$doc = $master->TrataDoc('12.345.678/0001-99');
+$doc = $master->TrataDoc('12.345.678/0001-99'); 
 echo "Documento normalizado: $doc\n";
