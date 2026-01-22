@@ -107,64 +107,6 @@ class Natal
                 if (isset($cc['art'])) $xml .= '<Art>' . $this->xmlSafeText((string)$cc['art']) . '</Art>';
                 $xml .= '</ConstrucaoCivil>';
             }
-            // IBSCBS (opcional - reforma tributária)
-            if (isset($rps['IBSCBS'])) {
-                $ibscbs = $rps['IBSCBS'];
-                $xml .= '<IBSCBS>';
-                if (isset($ibscbs['cLocalidadeIncid'])) $xml .= '<cLocalidadeIncid>' . $this->xmlSafeText((string)$ibscbs['cLocalidadeIncid']) . '</cLocalidadeIncid>';
-                if (isset($ibscbs['xLocalidadeIncid'])) $xml .= '<xLocalidadeIncid>' . $this->xmlSafeText((string)$ibscbs['xLocalidadeIncid']) . '</xLocalidadeIncid>';
-                if (isset($ibscbs['valores'])) {
-                    $val = $ibscbs['valores'];
-                    $xml .= '<valores>';
-                    if (isset($val['vBC'])) $xml .= '<vBC>' . $this->fmtMoney($val['vBC']) . '</vBC>';
-                    if (isset($val['uf'])) {
-                        $xml .= '<uf>';
-                        if (isset($val['uf']['pIBSUF'])) $xml .= '<pIBSUF>' . $this->fmtAliquota($val['uf']['pIBSUF']) . '</pIBSUF>';
-                        if (isset($val['uf']['pAliqEfetUF'])) $xml .= '<pAliqEfetUF>' . $this->fmtAliquota($val['uf']['pAliqEfetUF']) . '</pAliqEfetUF>';
-                        $xml .= '</uf>';
-                    }
-                    if (isset($val['mun'])) {
-                        $xml .= '<mun>';
-                        if (isset($val['mun']['pIBSMun'])) $xml .= '<pIBSMun>' . $this->fmtAliquota($val['mun']['pIBSMun']) . '</pIBSMun>';
-                        if (isset($val['mun']['pAliqEfetMun'])) $xml .= '<pAliqEfetMun>' . $this->fmtAliquota($val['mun']['pAliqEfetMun']) . '</pAliqEfetMun>';
-                        $xml .= '</mun>';
-                    }
-                    if (isset($val['fed'])) {
-                        $xml .= '<fed>';
-                        if (isset($val['fed']['pCBS'])) $xml .= '<pCBS>' . $this->fmtAliquota($val['fed']['pCBS']) . '</pCBS>';
-                        if (isset($val['fed']['pAliqEfetCBS'])) $xml .= '<pAliqEfetCBS>' . $this->fmtAliquota($val['fed']['pAliqEfetCBS']) . '</pAliqEfetCBS>';
-                        $xml .= '</fed>';
-                    }
-                    $xml .= '</valores>';
-                }
-                if (isset($ibscbs['totCIBS'])) {
-                    $tot = $ibscbs['totCIBS'];
-                    $xml .= '<totCIBS>';
-                    if (isset($tot['vTotNF'])) $xml .= '<vTotNF>' . $this->fmtMoney($tot['vTotNF']) . '</vTotNF>';
-                    if (isset($tot['gIBS'])) {
-                        $xml .= '<gIBS>';
-                        if (isset($tot['gIBS']['vIBSTot'])) $xml .= '<vIBSTot>' . $this->fmtMoney($tot['gIBS']['vIBSTot']) . '</vIBSTot>';
-                        if (isset($tot['gIBS']['gIBSUFTot'])) {
-                            $xml .= '<gIBSUFTot>';
-                            if (isset($tot['gIBS']['gIBSUFTot']['vIBSUF'])) $xml .= '<vIBSUF>' . $this->fmtMoney($tot['gIBS']['gIBSUFTot']['vIBSUF']) . '</vIBSUF>';
-                            $xml .= '</gIBSUFTot>';
-                        }
-                        if (isset($tot['gIBS']['gIBSMunTot'])) {
-                            $xml .= '<gIBSMunTot>';
-                            if (isset($tot['gIBS']['gIBSMunTot']['vIBSMun'])) $xml .= '<vIBSMun>' . $this->fmtMoney($tot['gIBS']['gIBSMunTot']['vIBSMun']) . '</vIBSMun>';
-                            $xml .= '</gIBSMunTot>';
-                        }
-                        $xml .= '</gIBS>';
-                    }
-                    if (isset($tot['gCBS'])) {
-                        $xml .= '<gCBS>';
-                        if (isset($tot['gCBS']['vCBS'])) $xml .= '<vCBS>' . $this->fmtMoney($tot['gCBS']['vCBS']) . '</vCBS>';
-                        $xml .= '</gCBS>';
-                    }
-                    $xml .= '</totCIBS>';
-                }
-                $xml .= '</IBSCBS>';
-            }
             $xml .= '</InfRps>';
             // Signature do RPS
             if (isset($rps['signature'])) {
@@ -182,6 +124,7 @@ class Natal
         $xml = preg_replace('/>\s+</', '><', $xml); // minifica: remove espaços/quebras entre tags
         $this->assertXmlOk($xml);
         return $xml;
+        // ... existing code ...
     }
 
     /**
