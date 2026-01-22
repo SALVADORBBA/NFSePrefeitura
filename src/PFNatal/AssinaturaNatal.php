@@ -212,4 +212,65 @@ class AssinaturaNatal
         $pem = str_replace(["-----BEGIN CERTIFICATE-----", "-----END CERTIFICATE-----", "\r", "\n"], '', $pem);
         return trim($pem);
     }
+
+    /**
+     * Assina cada InfRps individualmente e insere Signature como irmã.
+     * Depois assina o LoteRps e insere Signature como irmã.
+     */
+    public function assinarXmlNatalEstruturado(string $xml): string
+    {
+        $dom = new DOMDocument('1.0', 'UTF-8');
+        $dom->preserveWhiteSpace = false;
+        $dom->formatOutput = false;
+        if (!$dom->loadXML($xml)) {
+            throw new Exception("XML inválido: não foi possível carregar no DOM.");
+        }
+
+        // Assina cada InfRps
+        $infRpsList = $dom->getElementsByTagName('InfRps');
+        foreach ($infRpsList as $infRps) {
+            $idAttr = $this->getIdAttribute($infRps);
+            if (!$idAttr) continue;
+            $signature = $this->buildXmlDsigSignature($dom, $idAttr, ...$this->getCertKeys());
+            // Insere Signature como irmã após InfRps
+            if ($infRps->parentNode) {
+                $infRps->parentNode->insertBefore($signature, $infRps->nextSibling);
+            }
+        }
+
+        // Assina o LoteRps
+        $loteRps = $dom->getElementsByTagName('LoteRps')->item(0);
+        if ($loteRps) {
+            $idAttr = $this->getIdAttribute($loteRps);
+            if ($idAttr) {
+                $signature = $this->buildXmlDsigSignature($dom, $idAttr, ...$this->getCertKeys());
+                // Insere Signature como irmã após LoteRps
+                if ($loteRps->parentNode) {
+                    $loteRps->parentNode->insertBefore($signature, $loteRps->nextSibling);
+                }
+            }
+        }
+        return $dom->saveXML();
+    }
+
+    /**
+     * Helper para obter chave privada e certificado público do PFX
+     */
+    private function getCertKeys(): array
+    {
+        $pfx = file_get_contents($this->certPath);
+        if (!$pfx) {
+            throw new Exception("Não foi possível ler o PFX em: {$this->certPath}");
+        }
+        $certs = [];
+        if (!openssl_pkcs12_read($pfx, $certs, $this->certPassword)) {
+            throw new Exception("Falha ao ler PFX (senha inválida ou arquivo corrompido).");
+        }
+        $privateKey = $certs['pkey'] ?? null;
+        $publicCert = $certs['cert'] ?? null;
+        if (!$privateKey || !$publicCert) {
+            throw new Exception("PFX não contém chave privada/certificado.");
+        }
+        return [$privateKey, $publicCert];
+    }
 }

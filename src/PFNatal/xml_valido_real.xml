@@ -1,0 +1,92 @@
+<CompNfse xmlns="http://www.abrasf.org.br/ABRASF/arquivos/nfse.xsd">
+<Nfse xmlns="http://www.abrasf.org.br/ABRASF/arquivos/nfse.xsd">
+<InfNfse id="E22984055720260114">
+<Numero>57</Numero>
+<CodigoVerificacao>006884271</CodigoVerificacao>
+<DataEmissao>2026-01-14T10:36:24</DataEmissao>
+<NaturezaOperacao>1</NaturezaOperacao>
+<OptanteSimplesNacional>2</OptanteSimplesNacional>
+<IncentivadorCultural>2</IncentivadorCultural>
+<Competencia>2026-01-14</Competencia>
+<Servico>
+<Valores>
+<ValorServicos>31545.81</ValorServicos>
+<ValorDeducoes>0.00</ValorDeducoes>
+<IssRetido>2</IssRetido>
+<ValorIss>1577.29</ValorIss>
+<BaseCalculo>31545.81</BaseCalculo>
+<Aliquota>0.0500</Aliquota>
+</Valores>
+<ItemListaServico>042201</ItemListaServico>
+<Discriminacao>Plano de Saúde Viver|1|31545.81|31545.81#</Discriminacao>
+<CodigoMunicipio>2408102</CodigoMunicipio>
+</Servico>
+<PrestadorServico>
+<IdentificacaoPrestador>
+<Cnpj>58054221000122</Cnpj>
+<InscricaoMunicipal>2298405</InscricaoMunicipal>
+</IdentificacaoPrestador>
+<RazaoSocial>VIVER SAUDE LTDA</RazaoSocial>
+<NomeFantasia>VIVER SAÚDE LTDA</NomeFantasia>
+<Endereco>
+<Endereco>AV CAMPOS SALES</Endereco>
+<Numero>920</Numero>
+<Complemento> </Complemento>
+<Bairro>Tirol</Bairro>
+<CodigoMunicipio>2408102</CodigoMunicipio>
+<Uf>RN</Uf>
+<Cep>59020300</Cep>
+</Endereco>
+<Contato>
+<Telefone>8499550291</Telefone>
+<Email>ADMINISTRACAO@PLANOVIVERSAUDE.COM.BR</Email>
+</Contato>
+</PrestadorServico>
+<TomadorServico>
+<IdentificacaoTomador>
+<CpfCnpj>
+<Cnpj>02109397000180</Cnpj>
+</CpfCnpj>
+<InscricaoMunicipal>1448471</InscricaoMunicipal>
+</IdentificacaoTomador>
+<RazaoSocial>NATAL HOSPITAL CENTER S.A.</RazaoSocial>
+<Endereco>
+<Endereco>AV AFONSO PENA</Endereco>
+<Numero>754</Numero>
+<Bairro>TIROL</Bairro>
+<CodigoMunicipio>2408102</CodigoMunicipio>
+<Uf>RN</Uf>
+<Cep>59020100</Cep>
+</Endereco>
+<Contato>
+<Telefone>40091197</Telefone>
+<Email>abdiasfilho@hospitalriogrande.com.br</Email>
+</Contato>
+</TomadorServico>
+<OrgaoGerador>
+<CodigoMunicipio>2408102</CodigoMunicipio>
+<Uf>RN</Uf>
+</OrgaoGerador>
+</InfNfse>
+<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
+<SignedInfo>
+<CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>
+<SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>
+<Reference URI="#E22984055720260114">
+<Transforms>
+<Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
+</Transforms>
+<DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
+<DigestValue>5dnI0RuYjoIyyhlwuYjC8GWh5aw=</DigestValue>
+</Reference>
+</SignedInfo>
+<SignatureValue>hhcKXF39df8yIfhwzfYk5UuDeECn56UK5gu7VMqXpQC95xxbGHPgw8U2mY9lQmOStGTYFxatiCVV T8s7UKu53880bkPPGJhDYptPAyd9S3d3qK0DoSzk6k1iRZvnu3eOO5LqSRtABLjuCNjk/IZYx5Kt f1Hfxz3nDXCquJvDu8pNz12javDB5nxvqCHOrucJjRR3bydqyEaWwOO5ZQcm7eZ0+YcvuFrFlArl ybBsmGJ19clYoxevJ4wKJsbzLOClsogncDzOT7JsrWt2JuzOfcZtN7PsM363b3MdfoVWX9o8YEvb BNhf5pD32STRK03L/r2mc0kbgpXd26kTtNZ3HQ==</SignatureValue>
+<KeyInfo>
+<X509Data>
+<X509SubjectName>CN=MUNICIPIO DE NATAL:08241747000658,OU=Autenticado por AR Instituto Fenacon,OU=RFB e-CNPJ A1,OU=Secretaria da Receita Federal do Brasil - RFB,L=NATAL,ST=RN,O=ICP-Brasil,C=BR</X509SubjectName>
+<X509Certificate>MIIINTCCBh2gAwIBAgIQQPT6vdz7nkpXMRWJYB/cVTANBgkqhkiG9w0BAQsFADCBgDELMAkGA1UE BhMCQlIxEzARBgNVBAoTCklDUC1CcmFzaWwxNjA0BgNVBAsTLVNlY3JldGFyaWEgZGEgUmVjZWl0 YSBGZWRlcmFsIGRvIEJyYXNpbCAtIFJGQjEkMCIGA1UEAxMbQUMgSW5zdGl0dXRvIEZlbmFjb24g UkZCIEczMB4XDTE3MDYxMjEzMTE1OVoXDTE4MDYxMjEzMTE1OVowgeoxCzAJBgNVBAYTAkJSMRMw EQYDVQQKDApJQ1AtQnJhc2lsMQswCQYDVQQIDAJSTjEOMAwGA1UEBwwFTkFUQUwxNjA0BgNVBAsM LVNlY3JldGFyaWEgZGEgUmVjZWl0YSBGZWRlcmFsIGRvIEJyYXNpbCAtIFJGQjEWMBQGA1UECwwN UkZCIGUtQ05QSiBBMTEtMCsGA1UECwwkQXV0ZW50aWNhZG8gcG9yIEFSIEluc3RpdHV0byBGZW5h Y29uMSowKAYDVQQDDCFNVU5JQ0lQSU8gREUgTkFUQUw6MDgyNDE3NDcwMDA2NTgwggEiMA0GCSqG SIb3DQEBAQUAA4IBDwAwggEKAoIBAQC7wX1e1kVtTsrZvHDST1wOH00TpnDwiIzWiqRfwt8G/X6Q AKQfRRiagBzlw54g90Q5gKQWcTLYSy1TiB8Kh4BiPTxSG76Al3mZwTg0HxQN5RVGdPPC9MzQEaVJ gGtwJH92Q2cEotC+YAedtQEWaTZAq9ZxnZ43QOZpmq0UOsdkNIWQcZCoVPehgWYFlmer0Q/Ih7xL azeH2CqOd50V3uZv2qP0jdCeNuKJDvupRwKQpcP+sfAtOYn9FpVoed/8AFh2KwzCG6W3BZZ8vdfy u2cKv6HFir9v150Qb6kiBkgcx5ZpULQKz96ZswpArSNt02y0ApA1e0D9QQj4VdFFjbFTAgMBAAGj ggM9MIIDOTCBxwYDVR0RBIG/MIG8oD4GBWBMAQMEoDUEMzA1MDYxOTU5MjQyNjQyODg0ODcwMDAw MDAwMDAwMDAwMDAwMDAwMDMzODMyNklURVBSTqAlBgVgTAEDAqAcBBpDQVJMT1MgRURVQVJETyBO VU5FUyBBTFZFU6AZBgVgTAEDA6AQBA4wODI0MTc0NzAwMDY1OKAXBgVgTAEDB6AOBAwwMDAwMDAw MDAwMDCBH3JlbWJyYW5kdC5jb3VyYUBuYXRhbC5ybi5nb3YuYnIwCQYDVR0TBAIwADAfBgNVHSME GDAWgBQmx5Q9eod+f0t4ioc94M+1zqmw2jCBhgYDVR0gBH8wfTB7BgZgTAECASIwcTBvBggrBgEF BQcCARZjaHR0cDovL2ljcC1icmFzaWwuYWNmZW5hY29uLmNvbS5ici9yZXBvc2l0b3Jpby9kcGMv QUMtSW5zdGl0dXRvLUZlbmFjb24tUkZCL0RQQ19BQ19JRmVuYWNvbl9SRkIucGRmMIHKBgNVHR8E gcIwgb8wXqBcoFqGWGh0dHA6Ly9pY3AtYnJhc2lsLmFjZmVuYWNvbi5jb20uYnIvcmVwb3NpdG9y aW8vbGNyL0FDSW5zdGl0dXRvRmVuYWNvblJGQkczL0xhdGVzdENSTC5jcmwwXaBboFmGV2h0dHA6 Ly9pY3AtYnJhc2lsLm91dHJhbGNyLmNvbS5ici9yZXBvc2l0b3Jpby9sY3IvQUNJbnN0aXR1dG9G ZW5hY29uUkZCRzMvTGF0ZXN0Q1JMLmNybDAOBgNVHQ8BAf8EBAMCBeAwHQYDVR0lBBYwFAYIKwYB BQUHAwIGCCsGAQUFBwMEMIG7BggrBgEFBQcBAQSBrjCBqzBmBggrBgEFBQcwAoZaaHR0cDovL2lj cC1icmFzaWwuYWNmZW5hY29uLmNvbS5ici9yZXBvc2l0b3Jpby9jZXJ0aWZpY2Fkb3MvQUNfSW5z dGl0dXRvX0ZlbmFjb25fUkZCRzMucDdjMEEGCCsGAQUFBzABhjVodHRwOi8vb2NzcC1hYy1pbnN0 aXR1dG8tZmVuYWNvbi1yZmIuY2VydGlzaWduLmNvbS5icjANBgkqhkiG9w0BAQsFAAOCAgEAGHQr oVxQW35UjoGfaCjzSR4QaJCT42Fp73au7CJO4SVEC1moAt6lnStFg18lXsYfUhDo0mzNiBuSvM60 ImwsKBTgC27XplFfjTzvdcjLzW67rlrGN/Rg2ZfyqgMsmF90tDRexQO4ZhDEg9zSYSdQVTuv5Y14 qHFLJKocPLwS0YCz6ojA6wbT0Ub7NNUKcJeH+8AmcWvuQss42Vre7tgIAF8fsjA6bY95o1HkjuD8 extLyxnCddoVDdhlQmcreMcD/OOXxsCAEx3BNb8OVvASMWpwiOEimDYPDfHqXT6A5CzRpBTNk40d viPQlTEu5xajdD6yu9JQ78pn4NK45v2SGW8tHrT7sIeJtN33d5TQmzeXemfCMQC7bBmnuqE4yWrB kpx1EIgktkU1fPQG+yhlVGBZ2HRISgOwZQUjVp9LLRWVAEvG1avxsMhrJIQjj0h3LxpQmt1rsjip 1mnG6rbeyYeohwJiR5IHBdfxKve5Q95z/ShIw8bOXiNCEenCP69wfBfvXG43LCfOOh6VU3MRVJck joBcuA5mxPqrnXSLmjzCWTLvVhaOig0i4rbeVtrT+KPQBawFfCfF8GfSQRh4pFHH3fBZKdH6zl1l 9+frx/00ThaS4FxbXMMaFZnkWJKSOg8t+CYKq1QpiyRlwydsGlro3NN8y3zMFhGLNYiAHUQ=</X509Certificate>
+</X509Data>
+</KeyInfo>
+</Signature>
+</Nfse>
+</CompNfse>
