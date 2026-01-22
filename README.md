@@ -86,16 +86,16 @@ $doc = $master->TrataDoc('12.345.678/0001-99'); // 12345678000199
 ## Mudanças nas classes de Natal e Porto Seguro
 
 - **Natal/RN:**
-  Agora as classes relacionadas à prefeitura de Natal estão em fase de testes e refinamento. Os métodos estão sendo ajustados para garantir a correta emissão de NFSe e integração com o webservice da prefeitura. Recomenda-se usar a MasterClass para salvar arquivos de requisição/resposta e para logs durante o desenvolvimento.
+  Agora as classes relacionadas à prefeitura de Natal estão em fase de testes e refinamento. Os métodos estão sendo ajustados para garantir a correta emissão de NFSe e integração com o webservice da prefeitura. Recomenda-se usar a MasterClass para padronização de dados e cálculos durante o desenvolvimento.
 
 - **Porto Seguro/BA:**
-  As classes de Porto Seguro já estão em fase de emissão e produção, utilizando as funções utilitárias da MasterClass para garantir organização e rastreabilidade dos arquivos gerados.
+  As classes de Porto Seguro já estão em fase de emissão e produção, utilizando as funções utilitárias da MasterClass para garantir organização e padronização dos dados gerados.
 
 ---
 
 ## Recomendações
 
-- Utilize a MasterClass para todas as operações de diretório, log e salvamento de arquivos.
+- Utilize a MasterClass para operações de padronização de texto, cálculos percentuais, formatação de moeda e normalização de documentos.
 - Para novas cidades, siga o padrão de uso da MasterClass para facilitar manutenção e testes.
 - Consulte os exemplos em `src/exemplo/` para ver como integrar as funções utilitárias no fluxo de emissão e testes.
 
