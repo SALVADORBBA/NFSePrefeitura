@@ -2,9 +2,10 @@
 
 namespace NFSePrefeitura\NFSe\PFNatal;
 
+use NFSePrefeitura\NFSe\MasterClass;
 use InvalidArgumentException;
 
-class Natal
+class Natal extends MasterClass
 {
     public function gerarXmlLoteRps(array $dados): string
     {
@@ -12,8 +13,6 @@ class Natal
         $this->validarFormatosLote($dados);
 
         // ... existing code ...
-        $xml  = '';
-     
         $xml .= '<EnviarLoteRpsEnvio xmlns="http://www.abrasf.org.br/ABRASF/arquivos/nfse.xsd">';
         $xml .= '<LoteRps Id="lote">';
         $xml .= '<NumeroLote>' . $this->onlyDigits((string)$dados['numeroLote']) . '</NumeroLote>';
