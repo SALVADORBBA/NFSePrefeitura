@@ -2,118 +2,207 @@
 namespace NFSePrefeitura\NFSe\PFChapeco;
 
 use DOMDocument;
+use DOMElement;
 use DOMXPath;
 use InvalidArgumentException;
+use RuntimeException;
+use RobRichards\XMLSecLibs\XMLSecurityDSig;
+use RobRichards\XMLSecLibs\XMLSecurityKey;
 
 class AssinaturaChapeco
 {
-    private $certPath;
-    private $certPassword;
-    private $xml;
-    private $dom;
-    private $xpath;
+    private string $pfxPath;
+    private string $pfxPassword;
 
-    public function __construct(string $certPath, string $certPassword)
+    private DOMDocument $dom;
+    private DOMXPath $xpath;
+
+    private string $certPem; // CERT em PEM (extraído do PFX)
+    private string $keyPem;  // KEY em PEM (extraída do PFX)
+
+    public function __construct(string $pfxPath, string $pfxPassword)
     {
-        $this->certPath = $certPath;
-        $this->certPassword = $certPassword;
+        if (!is_file($pfxPath)) {
+            throw new InvalidArgumentException("PFX não encontrado em: {$pfxPath}");
+        }
+
+        $this->pfxPath     = $pfxPath;
+        $this->pfxPassword = $pfxPassword;
+
+        $this->extractFromPfx();
     }
 
+    /**
+     * Assina o LoteRps (ABRASF) usando PFX:
+     * - remove <Signature> existentes
+     * - garante atributo Id no LoteRps
+     * - cria assinatura enveloped com Reference URI="#Id"
+     * - insere Signature dentro do LoteRps
+     */
     public function assinarLoteRps(string $xml): string
     {
-        $this->xml = $xml;
-        $this->loadDom();
+        $this->loadDom($xml);
         $this->removerAssinaturas();
-        
-        // Assinar Rps
-        $this->assinarRps();
-        
-        // Assinar Lote
-        $this->assinarLote();
-        
+
+        $lote = $this->getFirstNodeByLocalName('LoteRps');
+        $id   = $this->ensureId($lote, 'LoteRps');
+
+        $this->signElementById($lote, $id);
+
         return $this->dom->saveXML();
     }
 
-    private function loadDom(): void
+    /**
+     * (Opcional) assina o nó InfDeclaracaoPrestacaoServico (se Chapecó exigir 2 assinaturas)
+     */
+    public function assinarRps(string $xml): string
+    {
+        $this->loadDom($xml);
+        $this->removerAssinaturas();
+
+        $inf = $this->getFirstNodeByLocalName('InfDeclaracaoPrestacaoServico');
+        $id  = $this->requireId($inf, 'InfDeclaracaoPrestacaoServico');
+
+        $this->signElementById($inf, $id);
+
+        return $this->dom->saveXML();
+    }
+
+    // =========================================================
+    // DOM
+    // =========================================================
+
+    private function loadDom(string $xml): void
     {
         $this->dom = new DOMDocument('1.0', 'UTF-8');
         $this->dom->preserveWhiteSpace = false;
         $this->dom->formatOutput = true;
-        $this->dom->loadXML($this->xml);
+
+        if (@$this->dom->loadXML($xml) !== true) {
+            throw new InvalidArgumentException("XML inválido (não foi possível carregar no DOM).");
+        }
+
         $this->xpath = new DOMXPath($this->dom);
         $this->xpath->registerNamespace('ns', 'http://www.abrasf.org.br/nfse.xsd');
     }
 
     private function removerAssinaturas(): void
     {
-        $signatures = $this->xpath->query('//*[local-name()="Signature"]');
-        foreach ($signatures as $signature) {
-            $signature->parentNode->removeChild($signature);
+        $nodes = $this->xpath->query('//*[local-name()="Signature"]');
+        if (!$nodes) return;
+
+        foreach ($nodes as $sig) {
+            if ($sig->parentNode) {
+                $sig->parentNode->removeChild($sig);
+            }
         }
     }
 
-    private function assinarRps(): void
+    private function getFirstNodeByLocalName(string $name): DOMElement
     {
-        $infRps = $this->xpath->query('//ns:InfDeclaracaoPrestacaoServico')->item(0);
-        if (!$infRps) {
-            throw new InvalidArgumentException('Nó InfDeclaracaoPrestacaoServico não encontrado no XML');
+        $node = $this->xpath->query('//*[local-name()="' . $name . '"]')->item(0);
+        if (!$node instanceof DOMElement) {
+            throw new InvalidArgumentException("Nó {$name} não encontrado no XML");
         }
-        
-        $xmlRps = $this->dom->saveXML($infRps);
-        $xmlRpsAssinado = $this->signXml($xmlRps, $infRps->getAttribute('Id'));
-        
-        $docRps = new DOMDocument();
-        $docRps->loadXML($xmlRpsAssinado);
-        
-        $signatureNode = $docRps->getElementsByTagName('Signature')->item(0);
-        $importedSignature = $this->dom->importNode($signatureNode, true);
-        
-        $infRps->parentNode->insertBefore($importedSignature, $infRps->nextSibling);
+        return $node;
     }
 
-    private function assinarLote(): void
+    private function requireId(DOMElement $el, string $label): string
     {
-        $loteRps = $this->xpath->query('//ns:LoteRps')->item(0);
-        if (!$loteRps) {
-            throw new InvalidArgumentException('Nó LoteRps não encontrado no XML');
+        $id = trim((string)$el->getAttribute('Id'));
+        if ($id === '') {
+            throw new InvalidArgumentException("{$label} sem atributo Id (necessário para assinar).");
         }
-        
-        $xmlLote = $this->dom->saveXML($loteRps);
-        $xmlLoteAssinado = $this->signXml($xmlLote, 'lote_' . $loteRps->getElementsByTagName('NumeroLote')->item(0)->nodeValue);
-        
-        $docLote = new DOMDocument();
-        $docLote->loadXML($xmlLoteAssinado);
-        
-        $signatureNode = $docLote->getElementsByTagName('Signature')->item(0);
-        $importedSignature = $this->dom->importNode($signatureNode, true);
-        
-        $loteRps->parentNode->insertBefore($importedSignature, $loteRps->nextSibling);
+        return $id;
     }
 
-    private function signXml(string $xml, string $id): string
+    private function ensureId(DOMElement $el, string $prefix): string
     {
-        $tempFile = tempnam(sys_get_temp_dir(), 'xml');
-        file_put_contents($tempFile, $xml);
-        
-        $command = sprintf(
-            'xmlsec1 --sign --privkey-pem %s,%s --id-attr:Id "%s" --output %s %s',
-            $this->certPath,
-            $this->certPassword,
-            $id,
-            $tempFile . '.signed',
-            $tempFile
+        $id = trim((string)$el->getAttribute('Id'));
+        if ($id !== '') return $id;
+
+        // tenta NumeroLote (quando for lote)
+        $numNode = $this->xpath->query('.//*[local-name()="NumeroLote"]', $el)->item(0);
+        $numero  = $numNode ? preg_replace('/\D+/', '', (string)$numNode->nodeValue) : '';
+
+        if ($numero === '') $numero = (string)time();
+
+        $id = $prefix . $numero;
+        $el->setAttribute('Id', $id);
+
+        return $id;
+    }
+
+    // =========================================================
+    // Assinatura (xmlseclibs)
+    // =========================================================
+
+    private function signElementById(DOMElement $elementToSign, string $id): void
+    {
+        // marca o atributo Id como do tipo ID para resolução do #URI
+        $elementToSign->setIdAttribute('Id', true);
+
+        $dsig = new XMLSecurityDSig();
+        $dsig->setCanonicalMethod(XMLSecurityDSig::C14N);
+
+        // ABRASF comumente usa SHA1 + RSA-SHA1 (muitas prefeituras antigas ainda exigem)
+        $dsig->addReference(
+            $elementToSign,
+            XMLSecurityDSig::SHA1,
+            [
+                'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
+                XMLSecurityDSig::C14N
+            ],
+            ['uri' => '#' . $id]
         );
-        
-        exec($command, $output, $return);
-        
-        if ($return !== 0) {
-            throw new InvalidArgumentException('Erro ao assinar XML: ' . implode('\n', $output));
+
+        // Chave privada (CORREÇÃO: isCert = false)
+        $key = new XMLSecurityKey(XMLSecurityKey::RSA_SHA1, ['type' => 'private']);
+        $key->loadKey($this->keyPem, false, false);
+
+        $dsig->sign($key);
+
+        // adiciona o certificado no KeyInfo
+        $dsig->add509Cert($this->normalizeCert($this->certPem), true, false, ['subjectName' => true]);
+
+        // insere Signature DENTRO do elemento assinado (no final)
+        $dsig->appendSignature($elementToSign);
+    }
+
+    private function normalizeCert(string $pem): string
+    {
+        // remove cabeçalhos e espaços, retorna base64 quebrado a cada 64 chars
+        $pem = trim($pem);
+        $pem = str_replace(["\r", "\n", " "], "", $pem);
+        $pem = str_replace(["-----BEGINCERTIFICATE-----", "-----ENDCERTIFICATE-----"], "", $pem);
+
+        return chunk_split($pem, 64, "\n");
+    }
+
+    // =========================================================
+    // PFX -> PEM (memória)
+    // =========================================================
+
+    private function extractFromPfx(): void
+    {
+        $pfxContent = file_get_contents($this->pfxPath);
+        if ($pfxContent === false) {
+            throw new RuntimeException("Não foi possível ler o PFX: {$this->pfxPath}");
         }
-        
-        $signedXml = file_get_contents($tempFile . '.signed');
-        unlink($tempFile);
-        unlink($tempFile . '.signed');
-        
-        return $signedXml;
+
+        $certs = [];
+        if (!openssl_pkcs12_read($pfxContent, $certs, $this->pfxPassword)) {
+            throw new RuntimeException("Falha ao ler PFX. Verifique senha/arquivo.");
+        }
+
+        $cert = $certs['cert'] ?? null;
+        $pkey = $certs['pkey'] ?? null;
+
+        if (!$cert || !$pkey) {
+            throw new RuntimeException("PFX lido, mas cert/pkey vazios.");
+        }
+
+        $this->certPem = $cert;
+        $this->keyPem  = $pkey;
     }
 }
