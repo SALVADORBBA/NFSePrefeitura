@@ -126,7 +126,7 @@ class AssinaturaNatal
         $signedInfo = $dom->createElementNS($dsigNs, 'SignedInfo');
 
         $canonMethod = $dom->createElementNS($dsigNs, 'CanonicalizationMethod');
-        $canonMethod->setAttribute('Algorithm', 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315');
+        $canonMethod->setAttribute('Algorithm', 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315#WithComments');
         $signedInfo->appendChild($canonMethod);
 
         $sigMethod = $dom->createElementNS($dsigNs, 'SignatureMethod');

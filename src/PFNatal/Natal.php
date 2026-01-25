@@ -26,7 +26,7 @@ class Natal extends MasterClass
             $this->validarFormatosRps($rps);
             $infId = (string)$rps['inf_id'];
             $xml .= '<Rps>';
-            $xml .= '<InfRps Id="rps:1401">';
+            $xml .= '<InfRps Id="rps:'. $dados['rps'][0]['inf_id'] . '">';
             $xml .= '<IdentificacaoRps>';
             $xml .= '<Numero>' . $this->onlyDigits((string)$rps['infRps']['numero']) . '</Numero>';
             $xml .= '<Serie>' . $this->xmlSafeText((string)$rps['infRps']['serie']) . '</Serie>';
@@ -93,8 +93,8 @@ class Natal extends MasterClass
             if (isset($rps['tomador']['contato'])) {
                 $c = $rps['tomador']['contato'];
                 $xml .= '<Contato>';
-                if (isset($c['telefone'])) $xml .= '<Telefone>' . $this->xmlSafeText((string)$c['telefone']) . '</Telefone>';
-                if (isset($c['email'])) $xml .= '<Email>' . $this->xmlSafeText((string)$c['email']) . '</Email>';
+                if (isset($c['telefone'])) $xml .= '<Telefone>' . $this->xmlSafeText($this->sanitizeString((string)$c['telefone'])) . '</Telefone>';
+                if (isset($c['email'])) $xml .= '<Email>' . $this->xmlSafeText($this->sanitizeString((string)$c['email'])) . '</Email>';
                 $xml .= '</Contato>';
             }
             $xml .= '</Tomador>';
@@ -102,68 +102,35 @@ class Natal extends MasterClass
             if (isset($rps['construcaoCivil'])) {
                 $cc = $rps['construcaoCivil'];
                 $xml .= '<ConstrucaoCivil>';
-                if (isset($cc['codigoObra'])) $xml .= '<CodigoObra>' . $this->xmlSafeText((string)$cc['codigoObra']) . '</CodigoObra>';
-                if (isset($cc['art'])) $xml .= '<Art>' . $this->xmlSafeText((string)$cc['art']) . '</Art>';
+                if (isset($cc['codigoObra'])) $xml .= '<CodigoObra>' . $this->xmlSafeText($this->sanitizeString((string)$cc['codigoObra'])) . '</CodigoObra>';
+                if (isset($cc['art'])) $xml .= '<Art>' . $this->xmlSafeText($this->sanitizeString((string)$cc['art'])) . '</Art>';
                 $xml .= '</ConstrucaoCivil>';
             }
             // IBSCBS (opcional - reforma tributária)
-            if (isset($rps['IBSCBS'])) {
-                $ibscbs = $rps['IBSCBS'];
-                $xml .= '<IBSCBS>';
-                if (isset($ibscbs['cLocalidadeIncid'])) $xml .= '<cLocalidadeIncid>' . $this->xmlSafeText((string)$ibscbs['cLocalidadeIncid']) . '</cLocalidadeIncid>';
-                if (isset($ibscbs['xLocalidadeIncid'])) $xml .= '<xLocalidadeIncid>' . $this->xmlSafeText((string)$ibscbs['xLocalidadeIncid']) . '</xLocalidadeIncid>';
-                if (isset($ibscbs['valores'])) {
-                    $val = $ibscbs['valores'];
-                    $xml .= '<valores>';
-                    if (isset($val['vBC'])) $xml .= '<vBC>' . $this->fmtMoney($val['vBC']) . '</vBC>';
-                    if (isset($val['uf'])) {
-                        $xml .= '<uf>';
-                        if (isset($val['uf']['pIBSUF'])) $xml .= '<pIBSUF>' . $this->fmtAliquota($val['uf']['pIBSUF']) . '</pIBSUF>';
-                        if (isset($val['uf']['pAliqEfetUF'])) $xml .= '<pAliqEfetUF>' . $this->fmtAliquota($val['uf']['pAliqEfetUF']) . '</pAliqEfetUF>';
-                        $xml .= '</uf>';
-                    }
-                    if (isset($val['mun'])) {
-                        $xml .= '<mun>';
-                        if (isset($val['mun']['pIBSMun'])) $xml .= '<pIBSMun>' . $this->fmtAliquota($val['mun']['pIBSMun']) . '</pIBSMun>';
-                        if (isset($val['mun']['pAliqEfetMun'])) $xml .= '<pAliqEfetMun>' . $this->fmtAliquota($val['mun']['pAliqEfetMun']) . '</pAliqEfetMun>';
-                        $xml .= '</mun>';
-                    }
-                    if (isset($val['fed'])) {
-                        $xml .= '<fed>';
-                        if (isset($val['fed']['pCBS'])) $xml .= '<pCBS>' . $this->fmtAliquota($val['fed']['pCBS']) . '</pCBS>';
-                        if (isset($val['fed']['pAliqEfetCBS'])) $xml .= '<pAliqEfetCBS>' . $this->fmtAliquota($val['fed']['pAliqEfetCBS']) . '</pAliqEfetCBS>';
-                        $xml .= '</fed>';
-                    }
-                    $xml .= '</valores>';
-                }
-                if (isset($ibscbs['totCIBS'])) {
-                    $tot = $ibscbs['totCIBS'];
-                    $xml .= '<totCIBS>';
-                    if (isset($tot['vTotNF'])) $xml .= '<vTotNF>' . $this->fmtMoney($tot['vTotNF']) . '</vTotNF>';
-                    if (isset($tot['gIBS'])) {
-                        $xml .= '<gIBS>';
-                        if (isset($tot['gIBS']['vIBSTot'])) $xml .= '<vIBSTot>' . $this->fmtMoney($tot['gIBS']['vIBSTot']) . '</vIBSTot>';
-                        if (isset($tot['gIBS']['gIBSUFTot'])) {
-                            $xml .= '<gIBSUFTot>';
-                            if (isset($tot['gIBS']['gIBSUFTot']['vIBSUF'])) $xml .= '<vIBSUF>' . $this->fmtMoney($tot['gIBS']['gIBSUFTot']['vIBSUF']) . '</vIBSUF>';
-                            $xml .= '</gIBSUFTot>';
-                        }
-                        if (isset($tot['gIBS']['gIBSMunTot'])) {
-                            $xml .= '<gIBSMunTot>';
-                            if (isset($tot['gIBS']['gIBSMunTot']['vIBSMun'])) $xml .= '<vIBSMun>' . $this->fmtMoney($tot['gIBS']['gIBSMunTot']['vIBSMun']) . '</vIBSMun>';
-                            $xml .= '</gIBSMunTot>';
-                        }
-                        $xml .= '</gIBS>';
-                    }
-                    if (isset($tot['gCBS'])) {
-                        $xml .= '<gCBS>';
-                        if (isset($tot['gCBS']['vCBS'])) $xml .= '<vCBS>' . $this->fmtMoney($tot['gCBS']['vCBS']) . '</vCBS>';
-                        $xml .= '</gCBS>';
-                    }
-                    $xml .= '</totCIBS>';
-                }
-                $xml .= '</IBSCBS>';
-            }
+            // Removido para compatibilidade com o padrão Natal
+            // if (isset($rps['IBSCBS']) && is_array($rps['IBSCBS'])) {
+            //     $xml .= "<IBSCBS>";
+            //     foreach ($rps['IBSCBS'] as $key => $value) {
+            //         if (is_array($value)) {
+            //             $xml .= "<{$key}>";
+            //             foreach ($value as $subKey => $subValue) {
+            //                 if (is_array($subValue)) {
+            //                     $xml .= "<{$subKey}>";
+            //                     foreach ($subValue as $subSubKey => $subSubValue) {
+            //                         $xml .= "<{$subSubKey}>" . htmlspecialchars((string)$subSubValue, ENT_XML1 | ENT_QUOTES, 'UTF-8') . "</{$subSubKey}>";
+            //                     }
+            //                     $xml .= "</{$subKey}>";
+            //                 } else {
+            //                     $xml .= "<{$subKey}>" . htmlspecialchars((string)$subValue, ENT_XML1 | ENT_QUOTES, 'UTF-8') . "</{$subKey}>";
+            //                 }
+            //             }
+            //             $xml .= "</{$key}>";
+            //         } else {
+            //             $xml .= "<{$key}>" . htmlspecialchars((string)$value, ENT_XML1 | ENT_QUOTES, 'UTF-8') . "</{$key}>";
+            //         }
+            //     }
+            //     $xml .= "</IBSCBS>";
+            // }
             $xml .= '</InfRps>';
             // Signature do RPS
             if (isset($rps['signature'])) {
@@ -274,7 +241,7 @@ class Natal extends MasterClass
     /**
      * Valida formato de CNPJ.
      */
-    private function isCnpjValido($cnpj): bool
+    protected function isCnpjValido($cnpj): bool
     {
         $cnpj = preg_replace('/\D+/', '', $cnpj);
         return (strlen($cnpj) === 14);
@@ -282,21 +249,21 @@ class Natal extends MasterClass
     /**
      * Valida formato de Inscrição Municipal (mínimo 1 caractere).
      */
-    private function isInscricaoMunicipalValida($im): bool
+    protected function isInscricaoMunicipalValida($im): bool
     {
         return (is_string($im) && strlen(trim($im)) > 0);
     }
     /**
      * Valida formato de data (YYYY-MM-DD ou YYYY-MM-DDTHH:MM:SS±HH:MM).
      */
-    private function isDataValida($data): bool
+    protected function isDataValida($data): bool
     {
         return (bool)preg_match('/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}([+-]\d{2}:\d{2})?)?$/', $data);
     }
     /**
      * Valida formato de CPF ou CNPJ.
      */
-    private function isCpfCnpjValido($doc): bool
+    protected function isCpfCnpjValido($doc): bool
     {
         $doc = preg_replace('/\D+/', '', $doc);
         return (strlen($doc) === 11 || strlen($doc) === 14);
@@ -316,41 +283,40 @@ class Natal extends MasterClass
 
     // ---------------- FORMAT / SANITIZE ----------------
 
-    private function onlyDigits(string $s): string
+    protected function onlyDigits(string $s): string
     {
         return preg_replace('/\D+/', '', $s) ?? '';
     }
 
-    /**
-     * Sanitiza texto para XML 1.0 e ESCAPA.
-     * Resolve o EX1: illegal xml character.
-     */
-    private function xmlSafeText(string $s): string
+    protected function xmlSafeText(string $s): string
     {
         // garante UTF-8 válido
         $s = mb_convert_encoding($s, 'UTF-8', 'UTF-8');
-
         // remove caracteres inválidos no XML 1.0
         $s = preg_replace('/[^\x{9}\x{A}\x{D}\x{20}-\x{D7FF}\x{E000}-\x{FFFD}]/u', '', $s);
-
         return htmlspecialchars($s, ENT_XML1 | ENT_QUOTES, 'UTF-8');
     }
 
-    /** Id não deve conter espaços/quotes etc. */
-    private function xmlSafeId(string $s): string
+    protected function xmlSafeId(string $s): string
     {
         $s = mb_convert_encoding($s, 'UTF-8', 'UTF-8');
         $s = preg_replace('/[^\w\-\:\.]+/u', '', $s); // mantém letras, números, _, -, :, .
         return $s ?: '0';
     }
 
-    private function fmtMoney($v): string
+    protected function fmtMoney($v): string
     {
         return number_format((float)$v, 2, '.', '');
     }
 
-    private function fmtAliquota($v): string
+    protected function fmtAliquota($v): string
     {
         return number_format((float)$v, 2, '.', '');
     }
+    private function sanitizeString($value) {
+    $value = strip_tags($value);
+    $value = preg_replace('/[^\w\s\.,\-\/\(\)]/u', '', $value);
+    $value = preg_replace('/\s+/', ' ', $value);
+    return trim($value);
+}
 }

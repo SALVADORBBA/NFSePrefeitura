@@ -2,9 +2,10 @@
 
 namespace NFSePrefeitura\NFSe\PFNatal;
 
+use NFSePrefeitura\NFSe\MasterClass;
 use InvalidArgumentException;
 
-class Natal
+class Natal extends MasterClass
 {
     public function gerarXmlLoteRps(array $dados): string
     {
@@ -12,8 +13,6 @@ class Natal
         $this->validarFormatosLote($dados);
 
         // ... existing code ...
-        $xml  = '';
-     
         $xml .= '<EnviarLoteRpsEnvio xmlns="http://www.abrasf.org.br/ABRASF/arquivos/nfse.xsd">';
         $xml .= '<LoteRps Id="lote">';
         $xml .= '<NumeroLote>' . $this->onlyDigits((string)$dados['numeroLote']) . '</NumeroLote>';
@@ -27,7 +26,7 @@ class Natal
             $this->validarFormatosRps($rps);
             $infId = (string)$rps['inf_id'];
             $xml .= '<Rps>';
-            $xml .= '<InfRps Id="rps:1401">';
+            $xml .= '<InfRps Id="rps:'. $dados['rps'][0]['inf_id'] . '">';
             $xml .= '<IdentificacaoRps>';
             $xml .= '<Numero>' . $this->onlyDigits((string)$rps['infRps']['numero']) . '</Numero>';
             $xml .= '<Serie>' . $this->xmlSafeText((string)$rps['infRps']['serie']) . '</Serie>';
@@ -107,6 +106,30 @@ class Natal
                 if (isset($cc['art'])) $xml .= '<Art>' . $this->xmlSafeText((string)$cc['art']) . '</Art>';
                 $xml .= '</ConstrucaoCivil>';
             }
+            // IBSCBS (opcional - reforma tributária)
+            if (isset($rps['IBSCBS']) && is_array($rps['IBSCBS'])) {
+                $xml .= "<IBSCBS>";
+                foreach ($rps['IBSCBS'] as $key => $value) {
+                    if (is_array($value)) {
+                        $xml .= "<{$key}>";
+                        foreach ($value as $subKey => $subValue) {
+                            if (is_array($subValue)) {
+                                $xml .= "<{$subKey}>";
+                                foreach ($subValue as $subSubKey => $subSubValue) {
+                                    $xml .= "<{$subSubKey}>" . htmlspecialchars((string)$subSubValue, ENT_XML1 | ENT_QUOTES, 'UTF-8') . "</{$subSubKey}>";
+                                }
+                                $xml .= "</{$subKey}>";
+                            } else {
+                                $xml .= "<{$subKey}>" . htmlspecialchars((string)$subValue, ENT_XML1 | ENT_QUOTES, 'UTF-8') . "</{$subKey}>";
+                            }
+                        }
+                        $xml .= "</{$key}>";
+                    } else {
+                        $xml .= "<{$key}>" . htmlspecialchars((string)$value, ENT_XML1 | ENT_QUOTES, 'UTF-8') . "</{$key}>";
+                    }
+                }
+                $xml .= "</IBSCBS>";
+            }
             $xml .= '</InfRps>';
             // Signature do RPS
             if (isset($rps['signature'])) {
@@ -124,7 +147,6 @@ class Natal
         $xml = preg_replace('/>\s+</', '><', $xml); // minifica: remove espaços/quebras entre tags
         $this->assertXmlOk($xml);
         return $xml;
-        // ... existing code ...
     }
 
     /**
@@ -218,7 +240,7 @@ class Natal
     /**
      * Valida formato de CNPJ.
      */
-    private function isCnpjValido($cnpj): bool
+    protected function isCnpjValido($cnpj): bool
     {
         $cnpj = preg_replace('/\D+/', '', $cnpj);
         return (strlen($cnpj) === 14);
@@ -226,21 +248,21 @@ class Natal
     /**
      * Valida formato de Inscrição Municipal (mínimo 1 caractere).
      */
-    private function isInscricaoMunicipalValida($im): bool
+    protected function isInscricaoMunicipalValida($im): bool
     {
         return (is_string($im) && strlen(trim($im)) > 0);
     }
     /**
      * Valida formato de data (YYYY-MM-DD ou YYYY-MM-DDTHH:MM:SS±HH:MM).
      */
-    private function isDataValida($data): bool
+    protected function isDataValida($data): bool
     {
         return (bool)preg_match('/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}([+-]\d{2}:\d{2})?)?$/', $data);
     }
     /**
      * Valida formato de CPF ou CNPJ.
      */
-    private function isCpfCnpjValido($doc): bool
+    protected function isCpfCnpjValido($doc): bool
     {
         $doc = preg_replace('/\D+/', '', $doc);
         return (strlen($doc) === 11 || strlen($doc) === 14);
@@ -260,40 +282,33 @@ class Natal
 
     // ---------------- FORMAT / SANITIZE ----------------
 
-    private function onlyDigits(string $s): string
+    protected function onlyDigits(string $s): string
     {
         return preg_replace('/\D+/', '', $s) ?? '';
     }
 
-    /**
-     * Sanitiza texto para XML 1.0 e ESCAPA.
-     * Resolve o EX1: illegal xml character.
-     */
-    private function xmlSafeText(string $s): string
+    protected function xmlSafeText(string $s): string
     {
         // garante UTF-8 válido
         $s = mb_convert_encoding($s, 'UTF-8', 'UTF-8');
-
         // remove caracteres inválidos no XML 1.0
         $s = preg_replace('/[^\x{9}\x{A}\x{D}\x{20}-\x{D7FF}\x{E000}-\x{FFFD}]/u', '', $s);
-
         return htmlspecialchars($s, ENT_XML1 | ENT_QUOTES, 'UTF-8');
     }
 
-    /** Id não deve conter espaços/quotes etc. */
-    private function xmlSafeId(string $s): string
+    protected function xmlSafeId(string $s): string
     {
         $s = mb_convert_encoding($s, 'UTF-8', 'UTF-8');
         $s = preg_replace('/[^\w\-\:\.]+/u', '', $s); // mantém letras, números, _, -, :, .
         return $s ?: '0';
     }
 
-    private function fmtMoney($v): string
+    protected function fmtMoney($v): string
     {
         return number_format((float)$v, 2, '.', '');
     }
 
-    private function fmtAliquota($v): string
+    protected function fmtAliquota($v): string
     {
         return number_format((float)$v, 2, '.', '');
     }
