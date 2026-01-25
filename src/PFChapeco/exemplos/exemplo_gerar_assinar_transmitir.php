@@ -23,7 +23,7 @@ $certPassword = 'xxxxxx';
 $dadosLote = [
     'lote_id'            => '1',
     'numeroLote'         => 1,
-    'cnpjPrestador'      => '00753494000185',
+    'cnpjPrestador'      => '12345678978888',
     'inscricaoMunicipal' => '185663',
     'quantidadeRps'      => 1,
     'rps' => [
@@ -58,7 +58,7 @@ $dadosLote = [
             'outrasRetencoes'          => 0,
             'valTotTributos'           => 0,
             'tomador' => [
-                'cnpj' => '57219214553',
+                'cnpj' => '123456789011',
                 'razaoSocial' => 'Rubens dos Santos',
                 'endereco' => 'Rua Porto Seguro',
                 'numero' => '12',
@@ -68,7 +68,7 @@ $dadosLote = [
                 'uf' => 'SC',
                 'cep' => '89802520',
                 'telefone' => '4933223046',
-                'email' => 'teste@exemplo.com',
+                'email' => 'salvadorbba@gmail.com',
             ],
         ],
     ],
