@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 require __DIR__ . '/vendor/autoload.php';
 
-use NFSePrefeitura\NFSe\Chapeco;
-use NFSePrefeitura\NFSe\NFSeSigner;
-
+use NFSePrefeitura\NFSe\PFChapeco\Chapeco;
+use NFSePrefeitura\NFSe\PFChapeco\AssinaturaChapeco;
+    use NFSePrefeitura\NFSe\PFChapeco\TransmitirChapeco;
 /**
  * =====================================================
  * 🔐 CONFIGURAÇÃO DO CERTIFICADO
  * =====================================================
  */
-$certPath     = __DIR__ . '/certificado/certificado_od.pfx';
-$certPassword = 'certPassword';
+$certPath     = __DIR__ . '/certificado/xxxx.pfx';
+$certPassword = 'xxxxxx';
 
 /**
  * =====================================================
@@ -21,32 +21,55 @@ $certPassword = 'certPassword';
  * =====================================================
  */
 $dadosLote = [
-    'lote_id'            => 'Lote1',
+    'lote_id'            => '1',
     'numeroLote'         => 1,
-    'cnpjPrestador'      => '12345678901112',
-    'inscricaoMunicipal' => '1234678995',
+    'cnpjPrestador'      => '00753494000185',
+    'inscricaoMunicipal' => '185663',
     'quantidadeRps'      => 1,
     'rps' => [
         [
-            'inf_id' => 'RPS1',
-            'infRps' => [
-                'numero'      => 1,
-                'serie'       => 'A',
-                'tipo'        => 1,
-                'dataEmissao' => '2026-01-17 14:45:15',
-            ],
+            'numero'      => 1,
+            'serie'       => '1',
+            'tipo'        => 1,
+            'dataEmissao' => '2026-01-18',
+              'status' => 1,
             'competencia'               => '2026-01-01',
-            'valorServicos'            => 35.00,
-            'valorIss'                 => 2.00,
-            'aliquota'                 => 2.0000,
+            'valorServicos'            => 5.00,
+            'valorIss'                 => 0,
+            'aliquota'                 => 0,
             'issRetido'                => 2,
-            'itemListaServico'         => '071001',
+            'itemListaServico'         => '1401',
+            'codigoCnae'               => '6201501',
             'discriminacao'            => 'Serviço de exemplo',
-            'codigoMunicipio'          => '2925303',
-            'exigibilidadeISS'         => 1,
-            'regimeEspecialTributacao' => 0,
+            'cNBS'                     => '115022000',
+            'codigoMunicipio'          => '4204202',
+            'municipioIncidencia'      => '4204202',
+            'localidadeIncidencia'     => 'Chapeco',
+            'incentivoFiscal'          => 1,
             'optanteSimplesNacional'   => 1,
-            'incentivoFiscal'          => 0,
+            'regimeEspecialTributacao' => 2,
+            'informacoesComplementares' => 'nada',
+            'valorDeducoes'            => 0,
+            'valorPis'                 => 0,
+            'valorCofins'              => 0,
+            'valorInss'                => 0,
+            'valorIr'                  => 0,
+            'valorCsll'                => 0,
+            'outrasRetencoes'          => 0,
+            'valTotTributos'           => 0,
+            'tomador' => [
+                'cnpj' => '57219214553',
+                'razaoSocial' => 'Rubens dos Santos',
+                'endereco' => 'Rua Porto Seguro',
+                'numero' => '12',
+                'complemento' => 'D',
+                'bairro' => 'Centro',
+                'codigoMunicipio' => '4204202',
+                'uf' => 'SC',
+                'cep' => '89802520',
+                'telefone' => '4933223046',
+                'email' => 'teste@exemplo.com',
+            ],
         ],
     ],
 ];
@@ -57,13 +80,61 @@ try {
      * ⚙️ GERA XML
      * =====================================================
      */
+    // Gera XML
+    echo "\n[PASSO] Iniciando geração do XML...\n";
     $nfse = new Chapeco($certPath, $certPassword);
-    $xml  = $nfse->gerarXmlLoteRps($dadosLote);
-    $xmlAssinado = NFSeSigner::sign($xml, $certPath, $certPassword);
-    salvarXml('xml_chapeco_assinado.xml', $xmlAssinado);
-    echo "XML gerado, assinado e salvo com sucesso!";
+    $xmlGerado = $nfse->gerarXmlLoteRps($dadosLote);
+    if ($xmlGerado instanceof \DOMDocument) {
+        $xmlGerado = $xmlGerado->saveXML();
+    }
+    salvarXml('xml_inicial.xml', $xmlGerado);
+    echo "\n===== XML GERADO ANTES DA ASSINATURA =====\n";
+    echo $xmlGerado;
+    echo "\n==========================================\n";
+    echo "\n[PASSO] XML gerado com sucesso!\n";
+
+
+    } catch (Exception $e) {
+    echo "Erro NFSe: " . $e->getMessage();
+}
+try {
+    // Assinatura do XML usando AssinaturaChapeco
+  
+    echo "\n[PASSO] Iniciando assinatura do XML...\n";
+    $assinador = new \NFSePrefeitura\NFSe\PFChapeco\AssinaturaChapeco(
+        $certPath, $certPassword
+    );
+    $xmlAssinado = $assinador->assinarLoteRps($xmlGerado);
+    if ($xmlAssinado instanceof \DOMDocument) {
+        $xmlAssinado = $xmlAssinado->saveXML();
+    }
+    salvarXml('xml_assinado.xml', $xmlAssinado);
+    echo "\n===== XML ASSINADO =====\n";
+    echo $xmlAssinado;
+    echo "\n========================\n";
+    echo "\n[PASSO] XML assinado com sucesso!\n";
+    // Após assinar, transmitir para Chapecó
+   
+
+    if (!empty($xmlAssinado)) { 
+        $resposta = TransmitirChapeco::transmitirLote($xmlAssinado);
+    
+        // Se a resposta for um objeto, acessa o campo outputXML
+        if (is_object($resposta) && isset($resposta->RecepcionarLoteRpsResponse->outputXML)) {
+            $xmlResposta = $resposta->RecepcionarLoteRpsResponse->outputXML;
+        } else {
+            // Se já for string, usa direto
+            $xmlResposta = (string)$resposta;
+        }
+    
+        salvarXml('xml_resposta.xml', $xmlResposta);
+        echo "Transmissão realizada! Resposta salva em xml_resposta.xml";
+    }
+
 } catch (Throwable $e) {
-    echo "Erro ao gerar/assinar XML NFSe: " . $e->getMessage();
+    echo "Erro NFSe: " . $e->getMessage();
+
+ 
 }
 
 /**
@@ -81,4 +152,7 @@ function salvarXml(string $nomeArquivo, string $conteudo): void
 
     $nomeFinal = date('Ymd_His_') . $nomeArquivo;
     file_put_contents($dir . $nomeFinal, $conteudo);
+    // Salva o XML gerado para debug
+     
+    echo "XML do lote gerado e salvo em xml_gerado_debug.xml\n";
 }
