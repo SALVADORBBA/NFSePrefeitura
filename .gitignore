@@ -1,0 +1,15 @@
+# Ignorar arquivos XML gerados
+*.xml
+
+# Ignorar diretórios de saída e exemplos
+/retono/
+/exemplo/
+/src/documetos/
+/gerador_dados.php
+# Ignorar arquivos temporários e de log
+*.tmp
+*.log
+
+# Ignorar arquivos do sistema
+.DS_Store
+Thumbs.db
