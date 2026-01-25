@@ -6,7 +6,7 @@ require __DIR__ . '/vendor/autoload.php';
 
 use NFSePrefeitura\NFSe\PFChapeco\Chapeco;
 use NFSePrefeitura\NFSe\PFChapeco\AssinaturaChapeco;
-
+    use NFSePrefeitura\NFSe\PFChapeco\TransmitirChapeco;
 /**
  * =====================================================
  * 🔐 CONFIGURAÇÃO DO CERTIFICADO
@@ -80,13 +80,18 @@ try {
      * ⚙️ GERA XML
      * =====================================================
      */
+    // Gera XML
+    echo "\n[PASSO] Iniciando geração do XML...\n";
     $nfse = new Chapeco($certPath, $certPassword);
     $xmlGerado = $nfse->gerarXmlLoteRps($dadosLote);
-
-    // Exibe o XML gerado antes da assinatura para inspeção
+    if ($xmlGerado instanceof \DOMDocument) {
+        $xmlGerado = $xmlGerado->saveXML();
+    }
+    salvarXml('xml_inicial.xml', $xmlGerado);
     echo "\n===== XML GERADO ANTES DA ASSINATURA =====\n";
     echo $xmlGerado;
     echo "\n==========================================\n";
+    echo "\n[PASSO] XML gerado com sucesso!\n";
 
 
     } catch (Exception $e) {
@@ -94,11 +99,37 @@ try {
 }
 try {
     // Assinatura do XML usando AssinaturaChapeco
-    $assinador = new AssinaturaChapeco($certPath, $certPassword);
+  
+    echo "\n[PASSO] Iniciando assinatura do XML...\n";
+    $assinador = new \NFSePrefeitura\NFSe\PFChapeco\AssinaturaChapeco(
+        $certPath, $certPassword
+    );
     $xmlAssinado = $assinador->assinarLoteRps($xmlGerado);
- 
+    if ($xmlAssinado instanceof \DOMDocument) {
+        $xmlAssinado = $xmlAssinado->saveXML();
+    }
     salvarXml('xml_assinado.xml', $xmlAssinado);
-    echo "XML gerado e assinado com sucesso!";
+    echo "\n===== XML ASSINADO =====\n";
+    echo $xmlAssinado;
+    echo "\n========================\n";
+    echo "\n[PASSO] XML assinado com sucesso!\n";
+    // Após assinar, transmitir para Chapecó
+   
+
+    if (!empty($xmlAssinado)) { 
+        $resposta = TransmitirChapeco::transmitirLote($xmlAssinado);
+    
+        // Se a resposta for um objeto, acessa o campo outputXML
+        if (is_object($resposta) && isset($resposta->RecepcionarLoteRpsResponse->outputXML)) {
+            $xmlResposta = $resposta->RecepcionarLoteRpsResponse->outputXML;
+        } else {
+            // Se já for string, usa direto
+            $xmlResposta = (string)$resposta;
+        }
+    
+        salvarXml('xml_resposta.xml', $xmlResposta);
+        echo "Transmissão realizada! Resposta salva em xml_resposta.xml";
+    }
 
 } catch (Throwable $e) {
     echo "Erro NFSe: " . $e->getMessage();
@@ -121,4 +152,7 @@ function salvarXml(string $nomeArquivo, string $conteudo): void
 
     $nomeFinal = date('Ymd_His_') . $nomeArquivo;
     file_put_contents($dir . $nomeFinal, $conteudo);
+    // Salva o XML gerado para debug
+     
+    echo "XML do lote gerado e salvo em xml_gerado_debug.xml\n";
 }

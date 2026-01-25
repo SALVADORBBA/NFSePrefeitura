@@ -4,69 +4,72 @@ namespace NFSePrefeitura\NFSe\PFChapeco;
 use SoapClient;
 use SoapFault;
 use Exception;
+
 /**
  * Classe Chapeco - Implementação do padrão ABRASF v2.04 para a Prefeitura de Chapecó - SC
- * Autor: [Seu Nome]
- * Esta classe faz parte da biblioteca NFSePrefeituras para integração com o padrão ABRASF versão 2.04.
- *
- * Observações:
- * - O XML gerado segue rigorosamente o layout ABRASF v2.04.
- * - Os namespaces utilizados são:
- *   - xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
- *   - xmlns:xsd="http://www.w3.org/2001/XMLSchema"
- *   - xmlns="http://www.abrasf.org.br/nfse.xsd"
- * - O método gerarXmlLoteRps NÃO inclui tags de assinatura digital, deixando o XML pronto para ser assinado externamente.
- * - Para detalhes do layout, consulte o Manual de Integração ABRASF v2.04.
+ * Refatorada para melhor clareza, organização e manutenção.
  */
 class Chapeco
 {
-    private const WSDL = 'https://chapeco.sc.gov.br/nfse/ws/nfse.asmx?WSDL'; // Atualize se necessário
+    private const WSDL = 'https://chapeco.sc.gov.br/nfse/ws/nfse.asmx?WSDL';
 
     private string $certPath;
     private string $certPassword;
 
+    /**
+     * Construtor da classe
+     */
     public function __construct(string $certPath, string $certPassword)
     {
         $this->certPath     = $certPath;
         $this->certPassword = $certPassword;
     }
 
-    private function client(): SoapClient
+    /**
+     * Cria e retorna o SoapClient configurado
+     */
+    private function getSoapClient(): SoapClient
     {
         $options = [
-            'local_cert' => $this->certPath,
-            'passphrase' => $this->certPassword,
-            'trace' => 1,
-            'exceptions' => true,
-            'cache_wsdl' => WSDL_CACHE_NONE,
-            'soap_version' => SOAP_1_1,
-            'encoding' => 'UTF-8'
+            'local_cert'    => $this->certPath,
+            'passphrase'    => $this->certPassword,
+            'trace'         => 1,
+            'exceptions'    => true,
+            'cache_wsdl'    => WSDL_CACHE_NONE,
+            'soap_version'  => SOAP_1_1,
+            'encoding'      => 'UTF-8'
         ];
         return new SoapClient(self::WSDL, $options);
     }
 
-    public function enviarLoteRps($xmlAssinado)
+    /**
+     * Transmite o XML assinado para o WebService da prefeitura
+     * Retorna apenas o XML puro de resposta
+     */
+    public function transmitirLoteRps(string $xmlAssinado): string
     {
-        $client = $this->client();
-        $params = [
-            'xml' => $xmlAssinado
-        ];
+        $client = $this->getSoapClient();
+        $params = ['xml' => $xmlAssinado];
         try {
             $response = $client->__soapCall('RecepcionarLoteRps', [$params]);
-            return $response;
+            if (is_object($response) && isset($response->RecepcionarLoteRpsResponse->outputXML)) {
+                return $response->RecepcionarLoteRpsResponse->outputXML;
+            }
+            return (string) $response;
         } catch (SoapFault $e) {
-            throw new Exception('Erro ao enviar lote RPS: ' . $e->getMessage());
+            throw new Exception('Erro ao transmitir lote RPS: ' . $e->getMessage());
         }
     }
 
-    public function gerarXmlLoteRps($dados)
+    /**
+     * Gera o XML do lote RPS conforme o padrão ABRASF v2.04
+     */
+    public function gerarXmlLoteRps(array $dados): string
     {
         $xml  = '<?xml version="1.0" encoding="UTF-8"?>';
         $xml .= '<EnviarLoteRpsEnvio xmlns="http://www.abrasf.org.br/nfse.xsd">';
         $xml .= '<LoteRps Id="lote' . $dados['lote_id'] . '" versao="2.04">';
         $xml .= '<NumeroLote>' . $dados['numeroLote'] . '</NumeroLote>';
-        $xml .= '<Cnpj>' . $dados['cnpjPrestador'] . '</Cnpj>';
-        $xml .= '<InscricaoMunicipal>' . $dados['inscricaoMunicipal'] . '</InscricaoMunicipal>';
         $xml .= '<QuantidadeRps>' . $dados['quantidadeRps'] . '</QuantidadeRps>';
         $xml .= '<ListaRps>';
         foreach ($dados['rps'] as $rps) {
