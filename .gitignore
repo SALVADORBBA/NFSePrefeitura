@@ -5,7 +5,8 @@
 /retono/
 /exemplo/
 /src/documetos/
-/gerador_dados.php
+# ... outros padrões ...
+gerador_dados.php
 # Ignorar arquivos temporários e de log
 *.tmp
 *.log
