@@ -1,11 +1,4 @@
-# Ignorar arquivos XML gerados
-*.xml
-
-# Ignorar diretórios de saída e exemplos
-/retono/
-/exemplo/
-/src/documetos/
-# ... outros padrões ...
+ExemploMotorMake.php
 gerador_dados.php
 # Ignorar arquivos temporários e de log
 *.tmp
