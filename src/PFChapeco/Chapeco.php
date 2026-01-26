@@ -64,122 +64,121 @@ class Chapeco
     /**
      * Gera o XML do lote RPS conforme o padrão ABRASF v2.04
      */
+    /**
+     * Gera o XML do lote RPS conforme o modelo fornecido pelo usuário (sem LoteRps)
+     */
     public function gerarXmlLoteRps(array $dados): string
     {
-        $xml  = '<?xml version="1.0" encoding="UTF-8"?>';
-        $xml .= '<EnviarLoteRpsEnvio xmlns="http://www.abrasf.org.br/nfse.xsd">';
-        $xml .= '<LoteRps Id="lote' . $dados['lote_id'] . '" versao="2.04">';
-        $xml .= '<NumeroLote>' . $dados['numeroLote'] . '</NumeroLote>';
-        $xml .= '<QuantidadeRps>' . $dados['quantidadeRps'] . '</QuantidadeRps>';
-        $xml .= '<ListaRps>';
-        foreach ($dados['rps'] as $rps) {
-            $xml .= '<Rps>';
-            $xml .= '<InfDeclaracaoPrestacaoServico Id="rps' . $rps['numero'] . '">';
-            $xml .= '<Rps>';
-            $xml .= '<IdentificacaoRps>';
-            $xml .= '<Numero>' . $rps['numero'] . '</Numero>';
-            $xml .= '<Serie>' . $rps['serie'] . '</Serie>';
-            $xml .= '<Tipo>' . $rps['tipo'] . '</Tipo>';
-            $xml .= '</IdentificacaoRps>';
-            $xml .= '<DataEmissao>' . $rps['dataEmissao'] . '</DataEmissao>';
-            $xml .= '<Status>' . $rps['status'] . '</Status>';
-            $xml .= '</Rps>';
-            $xml .= '<Competencia>' . $rps['competencia'] . '</Competencia>';
-            $xml .= '<Servico>';
-            $xml .= '<Valores>';
-            $xml .= '<ValorServicos>' . $rps['valorServicos'] . '</ValorServicos>';
-            $xml .= '<ValorDeducoes>' . $rps['valorDeducoes'] . '</ValorDeducoes>';
-            $xml .= '<ValorPis>' . $rps['valorPis'] . '</ValorPis>';
-            $xml .= '<ValorCofins>' . $rps['valorCofins'] . '</ValorCofins>';
-            $xml .= '<ValorInss>' . $rps['valorInss'] . '</ValorInss>';
-            $xml .= '<ValorIr>' . $rps['valorIr'] . '</ValorIr>';
-            $xml .= '<ValorCsll>' . $rps['valorCsll'] . '</ValorCsll>';
-            $xml .= '<OutrasRetencoes>' . $rps['outrasRetencoes'] . '</OutrasRetencoes>';
-            $xml .= '<ValTotTributos>' . $rps['valTotTributos'] . '</ValTotTributos>';
-            $xml .= '<ValorIss>' . $rps['valorIss'] . '</ValorIss>';
-            $xml .= '<Aliquota>0.00</Aliquota>';
-            $xml .= '<DescontoIncondicionado>0.00</DescontoIncondicionado>';
-            $xml .= '<DescontoCondicionado>0.00</DescontoCondicionado>';
-            $xml .= '</Valores>';
-            $xml .= '<IssRetido>' . $rps['issRetido'] . '</IssRetido>';
-            $xml .= '<ResponsavelRetencao>1</ResponsavelRetencao>';
-            $xml .= '<ItemListaServico>' . $rps['itemListaServico'] . '</ItemListaServico>';
-            $xml .= '<CodigoCnae>' . $rps['codigoCnae'] . '</CodigoCnae>';
-            $xml .= '<Discriminacao>' . $rps['discriminacao'] . '</Discriminacao>';
-            $xml .= '<CodigoMunicipio>' . $rps['codigoMunicipio'] . '</CodigoMunicipio>';
-            $xml .= '<cNBS>' . $rps['cNBS'] . '</cNBS>';
-            $xml .= '<CodigoPais>1058</CodigoPais>';
-            $xml .= '<ExigibilidadeISS>1</ExigibilidadeISS>';
-            $xml .= '<MunicipioIncidencia>' . $rps['municipioIncidencia'] . '</MunicipioIncidencia>';
-            $xml .= '<LocalidadeIncidencia>' . $rps['localidadeIncidencia'] . '</LocalidadeIncidencia>';
-            $xml .= '</Servico>';
-            $xml .= '<Prestador>';
-            $xml .= '<CpfCnpj><Cnpj>' . $dados['cnpjPrestador'] . '</Cnpj></CpfCnpj>';
-            $xml .= '<InscricaoMunicipal>' . $dados['inscricaoMunicipal'] . '</InscricaoMunicipal>';
-            $xml .= '</Prestador>';
-            $xml .= '<TomadorServico>';
-            $xml .= '<IdentificacaoTomador>';
-            $xml .= '<CpfCnpj><Cnpj>' . $rps['tomador']['cnpj'] . '</Cnpj></CpfCnpj>';
-            $xml .= '</IdentificacaoTomador>';
-            $xml .= '<RazaoSocial>' . $rps['tomador']['razaoSocial'] . '</RazaoSocial>';
-            $xml .= '<Endereco>';
-            $xml .= '<Endereco>' . $rps['tomador']['endereco'] . '</Endereco>';
-            $xml .= '<Numero>' . $rps['tomador']['numero'] . '</Numero>';
-            $xml .= '<Complemento>' . $rps['tomador']['complemento'] . '</Complemento>';
-            $xml .= '<Bairro>' . $rps['tomador']['bairro'] . '</Bairro>';
-            $xml .= '<CodigoMunicipio>' . $rps['tomador']['codigoMunicipio'] . '</CodigoMunicipio>';
-            $xml .= '<Uf>' . $rps['tomador']['uf'] . '</Uf>';
-            $xml .= '<Cep>' . $rps['tomador']['cep'] . '</Cep>';
-            $xml .= '</Endereco>';
-            $xml .= '<Contato>';
-            $xml .= '<Telefone>' . $rps['tomador']['telefone'] . '</Telefone>';
-            $xml .= '<Email>' . $rps['tomador']['email'] . '</Email>';
-            $xml .= '</Contato>';
-            $xml .= '</TomadorServico>';
-            $xml .= '<RegimeEspecialTributacao>1</RegimeEspecialTributacao>';
-            $xml .= '<OptanteSimplesNacional>1</OptanteSimplesNacional>';
-            $xml .= '<IncentivoFiscal>2</IncentivoFiscal>';
-            $xml .= '<InformacoesComplementares>nada</InformacoesComplementares>';
-            if (isset($rps['IBSCBS'])) {
-                $ibscbs = $rps['IBSCBS'];
-                $xml .= '<IBSCBS>';
-                $xml .= '<finNFSe>0</finNFSe>';
-                $xml .= '<indFinal>0</indFinal>';
-                $xml .= '<cIndOp>010100</cIndOp>';
-                $xml .= '<indDest>0</indDest>';
-                $xml .= '<valores>';
-                $xml .= '<trib>';
-                $xml .= '<gIBSCBS>';
-                $xml .= '<CST>' . $ibscbs['CST'] . '</CST>';
-                $xml .= '<cClassTrib>' . $ibscbs['cClassTrib'] . '</cClassTrib>';
-                $xml .= '</gIBSCBS>';
-                $xml .= '<vBC>' . $ibscbs['vBC'] . '</vBC>';
-                $xml .= '<gIBSMun>';
-                $xml .= '<pIBSMun>' . $ibscbs['pIBSMun'] . '</pIBSMun>';
-                $xml .= '<pRedAliqIBSMU>0.00</pRedAliqIBSMU>';
-                $xml .= '<vIBSMun>' . $ibscbs['vIBSMun'] . '</vIBSMun>';
-                $xml .= '</gIBSMun>';
-                $xml .= '<gIBSUF>';
-                $xml .= '<pIBSUF>' . $ibscbs['pIBSUF'] . '</pIBSUF>';
-                $xml .= '<pRedAliqIBSUF>0.00</pRedAliqIBSUF>';
-                $xml .= '<vIBSUF>' . $ibscbs['vIBSUF'] . '</vIBSUF>';
-                $xml .= '</gIBSUF>';
-                $xml .= '<vIBSTot>' . $ibscbs['vIBSTot'] . '</vIBSTot>';
-                $xml .= '<gCBS>';
-                $xml .= '<pIBSCBS>' . $ibscbs['pIBSCBS'] . '</pIBSCBS>';
-                $xml .= '<pRedAliqCBS>0.00</pRedAliqCBS>';
-                $xml .= '<vIBSCBS>' . $ibscbs['vIBSCBS'] . '</vIBSCBS>';
-                $xml .= '</gCBS>';
-                $xml .= '</trib>';
-                $xml .= '</valores>';
-                $xml .= '</IBSCBS>';
+        $rps = $dados['rps'][0]; // Considerando apenas um RPS conforme modelo
+        $xml  = '<?xml version="1.0" encoding="utf-8"?>';
+        $xml .= '<GerarNfseEnvio xmlns="http://www.abrasf.org.br/nfse.xsd">';
+        $xml .= '<Rps>';
+        $xml .= '<InfDeclaracaoPrestacaoServico>';
+        $xml .= '<Rps>';
+        $xml .= '<IdentificacaoRps>';
+        $xml .= '<Numero>' . $rps['numero'] . '</Numero>';
+        $xml .= '<Serie>' . $rps['serie'] . '</Serie>';
+        $xml .= '<Tipo>' . $rps['tipo'] . '</Tipo>';
+        $xml .= '</IdentificacaoRps>';
+        $xml .= '<DataEmissao>' . $rps['dataEmissao'] . '</DataEmissao>';
+        $xml .= '<Status>' . $rps['status'] . '</Status>';
+        $xml .= '</Rps>';
+        $xml .= '<Competencia>' . $rps['competencia'] . '</Competencia>';
+        $xml .= '<Servico>';
+        $xml .= '<Valores>';
+        $xml .= '<ValorServicos>' . $rps['valorServicos'] . '</ValorServicos>';
+        $xml .= '<ValorDeducoes>' . $rps['valorDeducoes'] . '</ValorDeducoes>';
+        $xml .= '<ValorPis>' . $rps['valorPis'] . '</ValorPis>';
+        $xml .= '<ValorCofins>' . $rps['valorCofins'] . '</ValorCofins>';
+        $xml .= '<ValorInss>' . $rps['valorInss'] . '</ValorInss>';
+        $xml .= '<ValorIr>' . $rps['valorIr'] . '</ValorIr>';
+        $xml .= '<ValorCsll>' . $rps['valorCsll'] . '</ValorCsll>';
+        $xml .= '<OutrasRetencoes>' . $rps['outrasRetencoes'] . '</OutrasRetencoes>';
+        $xml .= '<ValTotTributos>' . $rps['valTotTributos'] . '</ValTotTributos>';
+        $xml .= '<ValorIss>' . $rps['valorIss'] . '</ValorIss>';
+        $xml .= '<Aliquota>' . $rps['aliquota'] . '</Aliquota>';
+        // Garantir valor válido para DescontoIncondicionado
+        $valorDescontoIncondicionado = isset($rps['descontoIncondicionado']) && is_numeric($rps['descontoIncondicionado']) && $rps['descontoIncondicionado'] !== ''
+            ? number_format((float)$rps['descontoIncondicionado'], 2, '.', '')
+            : '0.00';
+        $xml .= '<DescontoIncondicionado>' . $valorDescontoIncondicionado . '</DescontoIncondicionado>';
+        // Garantir valor válido para DescontoCondicionado
+        $valorDescontoCondicionado = isset($rps['descontoCondicionado']) && is_numeric($rps['descontoCondicionado']) && $rps['descontoCondicionado'] !== ''
+            ? number_format((float)$rps['descontoCondicionado'], 2, '.', '')
+            : '0.00';
+        $xml .= '<DescontoCondicionado>' . $valorDescontoCondicionado . '</DescontoCondicionado>';
+        $xml .= '</Valores>';
+        $xml .= '<IssRetido>' . $rps['issRetido'] . '</IssRetido>';
+        $xml .= '<ResponsavelRetencao>' . $rps['responsavelRetencao'] . '</ResponsavelRetencao>';
+        $xml .= '<ItemListaServico>' . $rps['itemListaServico'] . '</ItemListaServico>';
+        $xml .= '<CodigoCnae>' . $rps['codigoCnae'] . '</CodigoCnae>';
+        $xml .= '<Discriminacao>' . $rps['discriminacao'] . '</Discriminacao>';
+        $xml .= '<CodigoMunicipio>' . $rps['codigoMunicipio'] . '</CodigoMunicipio>';
+        $xml .= '<CodigoPais>' . $rps['codigoPais'] . '</CodigoPais>';
+        $xml .= '<ExigibilidadeISS>' . $rps['exigibilidadeISS'] . '</ExigibilidadeISS>';
+        $xml .= '<MunicipioIncidencia>' . $rps['municipioIncidencia'] . '</MunicipioIncidencia>';
+        $xml .= '<cNBS>' . $rps['cNBS'] . '</cNBS>';
+        $xml .= '</Servico>';
+        $xml .= '<Prestador>';
+        $xml .= '<CpfCnpj><Cnpj>' . $dados['cnpjPrestador'] . '</Cnpj></CpfCnpj>';
+        $xml .= '<InscricaoMunicipal>' . $dados['inscricaoMunicipal'] . '</InscricaoMunicipal>';
+        $xml .= '</Prestador>';
+        $xml .= '<TomadorServico>';
+        $xml .= '<IdentificacaoTomador>';
+        $docTomador = '';
+        $tipoDoc = '';
+        if (isset($rps['tomador']['cnpj'])) {
+            if (strlen($rps['tomador']['cnpj']) === 11) {
+                $docTomador = $rps['tomador']['cnpj'];
+                $tipoDoc = 'cpf';
+            } elseif (strlen($rps['tomador']['cnpj']) === 14) {
+                $docTomador = $rps['tomador']['cnpj'];
+                $tipoDoc = 'cnpj';
             }
-            $xml .= '</InfDeclaracaoPrestacaoServico>';
-            $xml .= '</Rps>';
+        } elseif (isset($rps['tomador']['cpf']) && strlen($rps['tomador']['cpf']) === 11) {
+            $docTomador = $rps['tomador']['cpf'];
+            $tipoDoc = 'cpf';
+        } elseif (isset($rps['tomador']['documento'])) {
+            if (strlen($rps['tomador']['documento']) === 11) {
+                $docTomador = $rps['tomador']['documento'];
+                $tipoDoc = 'cpf';
+            } elseif (strlen($rps['tomador']['documento']) === 14) {
+                $docTomador = $rps['tomador']['documento'];
+                $tipoDoc = 'cnpj';
+            }
         }
-        $xml .= '</ListaRps>';
-        $xml .= '</LoteRps>';
-        $xml .= '</EnviarLoteRpsEnvio>';
+        if ($tipoDoc === 'cpf') {
+            $xml .= '<CpfCnpj><Cpf>' . $docTomador . '</Cpf></CpfCnpj>';
+        } elseif ($tipoDoc === 'cnpj') {
+            $xml .= '<CpfCnpj><Cnpj>' . $docTomador . '</Cnpj></CpfCnpj>';
+        } else {
+            $xml .= '<CpfCnpj></CpfCnpj>'; // Documento inválido ou ausente
+        }
+        $xml .= '</IdentificacaoTomador>';
+        $xml .= '<RazaoSocial>' . $rps['tomador']['razaoSocial'] . '</RazaoSocial>';
+        $xml .= '<Endereco>';
+        $xml .= '<Endereco>' . $rps['tomador']['endereco'] . '</Endereco>';
+        $xml .= '<Numero>' . $rps['tomador']['numero'] . '</Numero>';
+        $xml .= '<Bairro>' . $rps['tomador']['bairro'] . '</Bairro>';
+        $xml .= '<CodigoMunicipio>' . $rps['tomador']['codigoMunicipio'] . '</CodigoMunicipio>';
+        $xml .= '<Uf>' . $rps['tomador']['uf'] . '</Uf>';
+        $xml .= '<Cep>' . $rps['tomador']['cep'] . '</Cep>';
+        $xml .= '</Endereco>';
+        $xml .= '<Contato>';
+        $xml .= '<Telefone>' . $rps['tomador']['telefone'] . '</Telefone>';
+        $xml .= '<Email>' . $rps['tomador']['email'] . '</Email>';
+        $xml .= '</Contato>';
+        $xml .= '</TomadorServico>';
+        $xml .= '<RegimeEspecialTributacao>' . $rps['regimeEspecialTributacao'] . '</RegimeEspecialTributacao>';
+        $xml .= '<OptanteSimplesNacional>' . $rps['optanteSimplesNacional'] . '</OptanteSimplesNacional>';
+        $xml .= '<IncentivoFiscal>' . $rps['incentivoFiscal'] . '</IncentivoFiscal>';
+        $xml .= '<InformacoesComplementares>' . $rps['informacoesComplementares'] . '</InformacoesComplementares>';
+        if (isset($rps['IBSCBS'])) {
+            // Removido conforme solicitado: não gerar bloco IBSCBS
+        }
+        $xml .= '</InfDeclaracaoPrestacaoServico>';
+        $xml .= '</Rps>';
+        $xml .= '</GerarNfseEnvio>';
         return $xml;
     }
 }

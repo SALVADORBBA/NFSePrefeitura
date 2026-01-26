@@ -12,8 +12,8 @@ use NFSePrefeitura\NFSe\PFChapeco\AssinaturaChapeco;
  * 🔐 CONFIGURAÇÃO DO CERTIFICADO
  * =====================================================
  */
-$certPath     = __DIR__ . '/certificado/xxxx.pfx';
-$certPassword = 'xxxxxx';
+$certPath     = __DIR__ . '/certificado/certificado_od.pfx';
+$certPassword = '15021502';
 
 /**
  * =====================================================
@@ -23,8 +23,8 @@ $certPassword = 'xxxxxx';
 $dadosLote = [
     'lote_id'            => '1',
     'numeroLote'         => 1,
-    'cnpjPrestador'      => '12345678978888',
-    'inscricaoMunicipal' => '185663',
+    'cnpjPrestador'      => '12345678901122',
+    'inscricaoMunicipal' => '1212222',
     'quantidadeRps'      => 1,
     'rps' => [
         [
@@ -38,6 +38,9 @@ $dadosLote = [
             'valorIss'                 => 0,
             'aliquota'                 => 0,
             'issRetido'                => 2,
+             'codigoPais'                => 1058,
+                      'exigibilidadeISS'                =>1,
+
             'itemListaServico'         => '1401',
             'codigoCnae'               => '6201501',
             'discriminacao'            => 'Serviço de exemplo',
@@ -57,6 +60,9 @@ $dadosLote = [
             'valorCsll'                => 0,
             'outrasRetencoes'          => 0,
             'valTotTributos'           => 0,
+            'descontoIncondicionado'   =>'0.00',
+            'responsavelRetencao'   =>  '1',
+          
             'tomador' => [
                 'cnpj' => '123456789011',
                 'razaoSocial' => 'Rubens dos Santos',
@@ -67,8 +73,8 @@ $dadosLote = [
                 'codigoMunicipio' => '4204202',
                 'uf' => 'SC',
                 'cep' => '89802520',
-                'telefone' => '4933223046',
-                'email' => 'salvadorbba@gmail.com',
+                'telefone' => '71996758059',
+                'email' => 'salvadorbb@gmail.com.com',
             ],
         ],
     ],
@@ -99,12 +105,11 @@ try {
 }
 try {
     // Assinatura do XML usando AssinaturaChapeco
-  
     echo "\n[PASSO] Iniciando assinatura do XML...\n";
     $assinador = new \NFSePrefeitura\NFSe\PFChapeco\AssinaturaChapeco(
         $certPath, $certPassword
     );
-    $xmlAssinado = $assinador->assinarLoteRps($xmlGerado);
+    $xmlAssinado = $assinador->assinarRps($xmlGerado);
     if ($xmlAssinado instanceof \DOMDocument) {
         $xmlAssinado = $xmlAssinado->saveXML();
     }
@@ -114,10 +119,9 @@ try {
     echo "\n========================\n";
     echo "\n[PASSO] XML assinado com sucesso!\n";
     // Após assinar, transmitir para Chapecó
-   
 
     if (!empty($xmlAssinado)) { 
-        $resposta = TransmitirChapeco::transmitirLote($xmlAssinado);
+        $resposta = \NFSePrefeitura\NFSe\PFChapeco\TransmitirChapeco::transmitirLote($xmlAssinado);
     
         // Se a resposta for um objeto, acessa o campo outputXML
         if (is_object($resposta) && isset($resposta->RecepcionarLoteRpsResponse->outputXML)) {
