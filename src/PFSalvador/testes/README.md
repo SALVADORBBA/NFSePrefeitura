@@ -24,7 +24,7 @@ Teste detalhado com múltiplas opções de teste.
 php TestarRotasSalvador.php
 
 # Teste com certificado digital
-php TestarRotasSalvador.php /caminho/certificado.pfx senha_do_certificado homologacao
+php TestarRotasSalvador.php /caminho/certificado.pfx senha_do_certificado homologacao 
 
 # Teste com certificado em produção (CUIDADO!)
 php TestarRotasSalvador.php /caminho/certificado.pfx senha_do_certificado producao
