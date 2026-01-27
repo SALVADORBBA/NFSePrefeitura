@@ -16,7 +16,7 @@ php testar_rotas_simples.php
 - ✅ Tempo de resposta básico
 - ✅ Validação do formato WSDL
 
-### 2. `TestarRotasSalvador.php` - Teste Completo
+### 2. `TestarRotasSalvador.php` - Teste Completo 
 Teste detalhado com múltiplas opções de teste.
 
 ```bash
