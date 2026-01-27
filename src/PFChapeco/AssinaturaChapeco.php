@@ -1,30 +1,34 @@
 <?php
+
 namespace NFSePrefeitura\NFSe\PFChapeco;
 
 use DOMDocument;
 use DOMElement;
-use DOMNode;
 use DOMXPath;
 use InvalidArgumentException;
 use RuntimeException;
 use RobRichards\XMLSecLibs\XMLSecurityDSig;
 use RobRichards\XMLSecLibs\XMLSecurityKey;
 
+/**
+ * Assinatura digital de XML para NFS-e Chapecó/SC (padrão ABRASF)
+ * - Remove prefixo ds: da assinatura (exigido por Chapecó)
+ * - Suporta PFX ou PEM (certificado + chave)
+ * - Assina GerarNfseEnvio ou LoteRps
+ */
 class AssinaturaChapeco
 {
-    private string $pfxPath;
-    private string $pfxPassword;
-
-    private string $certPem; // PEM completo: -----BEGIN CERTIFICATE----- ... -----END CERTIFICATE-----
-    private string $keyPem;  // PEM chave privada
-
     private DOMDocument $dom;
     private DOMXPath $xpath;
+    private string $pfxPath;
+    private string $pfxPassword;
+    private string $certPem;
+    private string $keyPem;
 
     public function __construct(string $pfxPath, string $pfxPassword)
     {
-        if (!is_file($pfxPath)) {
-            throw new InvalidArgumentException("PFX não encontrado em: {$pfxPath}");
+        if (!file_exists($pfxPath)) {
+            throw new InvalidArgumentException("PFX não encontrado: {$pfxPath}");
         }
 
         $this->pfxPath     = $pfxPath;
@@ -33,120 +37,41 @@ class AssinaturaChapeco
         $this->extractFromPfx();
     }
 
-    // =========================================================
-    // API PÚBLICA
-    // =========================================================
-
     /**
-     * Assina o nó InfDeclaracaoPrestacaoServico e insere <Signature> como IRMÃ dentro de <Rps>
-     * (logo após </InfDeclaracaoPrestacaoServico>).
+     * Carrega o XML num DOMDocument com os namespaces necessários
      */
-    public function assinarRps(string $xml): string
-    {
-        $this->loadDom($xml);
-        $this->removeAllSignatures();
-
-        $inf = $this->getFirstNodeByLocalName('InfDeclaracaoPrestacaoServico');
-        $id  = $this->ensureId($inf, 'Rps');
-
-        $parentRps = $inf->parentNode;
-        if (!$parentRps instanceof DOMElement || $parentRps->localName !== 'Rps') {
-            throw new InvalidArgumentException('Estrutura inesperada: InfDeclaracaoPrestacaoServico deve estar dentro de <Rps>.');
-        }
-
-        $sigNode = $this->createSignatureNodeForElement($inf, $id);
-        $this->insertAfter($sigNode, $inf);
-
-        return $this->dom->saveXML();
-    }
-
-    /**
-     * Assina o nó LoteRps e insere <Signature> como IRMÃ após </LoteRps>
-     * (igual ao modelo oficial de Chapecó que você colou).
-     */
-    public function assinarLoteRps(string $xml): string
-    {
-        $this->loadDom($xml);
-        $this->removeAllSignatures();
-
-        $lote = $this->getFirstNodeByLocalName('LoteRps');
-        $id   = $this->ensureId($lote, 'Lote');
-
-        $sigNode = $this->createSignatureNodeForElement($lote, $id);
-        $this->insertAfter($sigNode, $lote);
-
-        return $this->dom->saveXML();
-    }
-
-    /**
-     * Assina:
-     * - Todos os InfDeclaracaoPrestacaoServico (RPS)
-     * - O LoteRps (primeiro encontrado)
-     */
-    public function assinarRpsELote(string $xml): string
-    {
-        $this->loadDom($xml);
-        $this->removeAllSignatures();
-
-        // 1) Assina todos os RPS (InfDeclaracaoPrestacaoServico)
-        $infList = $this->xpath->query('//*[local-name()="InfDeclaracaoPrestacaoServico"]');
-        if ($infList) {
-            foreach ($infList as $node) {
-                if (!$node instanceof DOMElement) {
-                    continue;
-                }
-
-                $id = $this->ensureId($node, 'Rps');
-
-                $parentRps = $node->parentNode;
-                if ($parentRps instanceof DOMElement && $parentRps->localName === 'Rps') {
-                    $sigNode = $this->createSignatureNodeForElement($node, $id);
-                    $this->insertAfter($sigNode, $node);
-                }
-            }
-        }
-
-        // 2) Assina o LoteRps (primeiro)
-        $loteNodes = $this->xpath->query('//*[local-name()="LoteRps"]');
-        if ($loteNodes && $loteNodes->length > 0) {
-            $lote = $loteNodes->item(0);
-            if ($lote instanceof DOMElement) {
-                $id = $this->ensureId($lote, 'Lote');
-                $sigNode = $this->createSignatureNodeForElement($lote, $id);
-                $this->insertAfter($sigNode, $lote);
-            }
-        }
-
-        return $this->dom->saveXML();
-    }
-
-    // =========================================================
-    // DOM / XPATH
-    // =========================================================
-
     private function loadDom(string $xml): void
     {
-        $this->dom = new DOMDocument('1.0', 'UTF-8');
+        $this->dom                     = new DOMDocument('1.0', 'UTF-8');
         $this->dom->preserveWhiteSpace = false;
-        $this->dom->formatOutput = false;
+        $this->dom->formatOutput       = true;
 
-        if (@$this->dom->loadXML($xml) !== true) {
-            throw new InvalidArgumentException("XML inválido (não foi possível carregar no DOM).");
+        libxml_use_internal_errors(true);
+        if (!$this->dom->loadXML($xml)) {
+            $errors = libxml_get_errors();
+            $msg    = [];
+            foreach ($errors as $e) {
+                $msg[] = $e->message;
+            }
+            throw new InvalidArgumentException('XML malformado: ' . implode(' | ', $msg));
         }
+        libxml_clear_errors();
 
+        // Registra os namespaces para XPath
         $this->xpath = new DOMXPath($this->dom);
-        $this->xpath->registerNamespace('ns', 'http://www.abrasf.org.br/nfse.xsd');
+        $this->xpath->registerNamespace('nfse', 'http://www.abrasf.org.br/nfse.xsd');
+        $this->xpath->registerNamespace('ds', 'http://www.w3.org/2000/09/xmldsig#');
     }
 
-    private function removeAllSignatures(): void
+    /**
+     * Remove todas as assinaturas existentes no XML
+     */
+    private function removerAssinaturas(): void
     {
-        $nodes = $this->xpath->query('//*[local-name()="Signature"]');
-        if (!$nodes) {
-            return;
-        }
-
-        foreach ($nodes as $sig) {
-            if ($sig->parentNode) {
+        $signatures = $this->dom->getElementsByTagName('Signature');
+        while ($signatures->length > 0) {
+            $sig = $signatures->item(0);
+            if ($sig && $sig->parentNode) {
                 $sig->parentNode->removeChild($sig);
             }
         }
@@ -161,152 +86,206 @@ class AssinaturaChapeco
         return $node;
     }
 
-    /**
-     * Gera/garante Id:
-     * - prefix 'Lote' => usa NumeroLote
-     * - prefix 'Rps'  => usa IdentificacaoRps/Numero
-     */
-    private function ensureId(DOMElement $el, string $prefix): string
+    private function requireId(DOMElement $el, string $label): string
     {
         $id = trim((string)$el->getAttribute('Id'));
-        if ($id !== '') {
-            return $id;
+        if ($id === '') {
+            throw new InvalidArgumentException("{$label} sem atributo Id (necessário para assinar).");
         }
-
-        $numero = '';
-
-        if ($prefix === 'Lote') {
-            $numNode = $this->xpath->query('.//*[local-name()="NumeroLote"]', $el)->item(0);
-            $numero  = $numNode ? preg_replace('/\D+/', '', (string)$numNode->nodeValue) : '';
-            if ($numero === '') {
-                $numero = (string)time();
-            }
-            $id = 'Lote' . $numero;
-        } else {
-            $numNode = $this->xpath->query('.//*[local-name()="IdentificacaoRps"]/*[local-name()="Numero"]', $el)->item(0);
-            $numero  = $numNode ? preg_replace('/\D+/', '', (string)$numNode->nodeValue) : '';
-            if ($numero === '') {
-                $numero = (string)time();
-            }
-            $id = 'Rps' . $numero;
-        }
-
-        $el->setAttribute('Id', $id);
         return $id;
     }
 
-    private function insertAfter(DOMNode $newNode, DOMNode $referenceNode): void
+    private function ensureId(DOMElement $el, string $prefix): string
     {
-        $parent = $referenceNode->parentNode;
-        if (!$parent) {
-            throw new RuntimeException('Não foi possível inserir Signature: nó de referência sem pai.');
-        }
+        $id = trim((string)$el->getAttribute('Id'));
+        if ($id !== '') return $id;
 
-        $next = $referenceNode->nextSibling;
-        if ($next) {
-            $parent->insertBefore($newNode, $next);
-        } else {
-            $parent->appendChild($newNode);
-        }
+        // tenta NumeroLote (quando for lote)
+        $numNode = $this->xpath->query('.//*[local-name()="NumeroLote"]', $el)->item(0);
+        $numero  = $numNode ? preg_replace('/\D+/', '', (string)$numNode->nodeValue) : '';
+
+        if ($numero === '') $numero = (string)time();
+
+        $id = $prefix . $numero;
+        $el->setAttribute('Id', $id);
+
+        return $id;
     }
 
     // =========================================================
-    // ASSINATURA (xmlseclibs)
+    // Assinatura (xmlseclibs)
     // =========================================================
 
-    /**
-     * Cria o nó <Signature> para o elemento alvo (Id).
-     * - Reference URI="#Id"
-     * - KeyInfo com X509Certificate (NUNCA vazio)
-     */
-    private function createSignatureNodeForElement(DOMElement $elementToSign, string $id): DOMElement
+    private function signElementById(DOMElement $elementToSign, string $id): void
     {
+        // marca o atributo Id como do tipo ID para resolução do #URI
         $elementToSign->setIdAttribute('Id', true);
 
         $dsig = new XMLSecurityDSig();
         $dsig->setCanonicalMethod(XMLSecurityDSig::C14N);
 
+        // ABRASF comumente usa SHA1 + RSA-SHA1 (muitas prefeituras antigas ainda exigem)
         $dsig->addReference(
             $elementToSign,
             XMLSecurityDSig::SHA1,
-            [
-                'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
-                XMLSecurityDSig::C14N
-            ],
+            ['http://www.w3.org/2000/09/xmldsig#enveloped-signature'],
             ['uri' => '#' . $id]
         );
 
+        // Chave privada (CORREÇÃO: isCert = false)
         $key = new XMLSecurityKey(XMLSecurityKey::RSA_SHA1, ['type' => 'private']);
         $key->loadKey($this->keyPem, false, false);
+
         $dsig->sign($key);
 
-        // >>> Aqui é o ponto que resolve seu "X509Data vazio" <<<
-        // Passa o PEM completo (BEGIN/END). O xmlseclibs extrai o base64 e monta X509Certificate corretamente.
-        $this->assertCertPemIsValid($this->certPem);
-        $dsig->add509Cert($this->certPem, true, false);
+        // adiciona o certificado no KeyInfo com todos os elementos necessários
+        $this->adicionarCertificadoCompleto($dsig);
 
-        // Gera Signature em container temporário para não inserir dentro do elemento assinado
-        $container = $this->dom->createElement('TmpContainer');
-        $this->dom->documentElement->appendChild($container);
+        // insere Signature DENTRO do elemento assinado (no final)
+        $dsig->appendSignature($elementToSign);
+    }
 
-        $dsig->appendSignature($container);
+    private function normalizeCert(string $pem): string
+    {
+        // remove cabeçalhos e espaços, retorna base64 quebrado a cada 64 chars
+        $pem = trim($pem);
+        $pem = str_replace(["\r", "\n", " "], "", $pem);
+        $pem = str_replace(['-----BEGINCERTIFICATE-----', '-----ENDCERTIFICATE-----'], '', $pem);
 
-        $sig = null;
-        foreach ($container->childNodes as $child) {
-            if ($child instanceof DOMElement && $child->localName === 'Signature') {
-                $sig = $child;
-                break;
+        return chunk_split($pem, 64, "\n");
+    }
+
+    /**
+     * Adiciona certificado completo com todos os elementos X509 necessários
+     * na ordem correta conforme o padrão XMLDSig
+     */
+    private function adicionarCertificadoCompleto(XMLSecurityDSig $dsig): void
+    {
+        // Verifica se o signatureNode existe, se não, cria a estrutura básica
+        $signature = $dsig->signatureNode;
+        
+        if ($signature === null) {
+            // Cria a estrutura de assinatura manualmente se não existir
+            $signature = $this->dom->createElement('Signature');
+            $signature->setAttribute('xmlns', 'http://www.w3.org/2000/09/xmldsig#');
+            $dsig->signatureNode = $signature;
+        }
+        
+        // Remove KeyInfo existente se houver
+        $keyInfos = $signature->getElementsByTagName('KeyInfo');
+        while ($keyInfos->length > 0) {
+            $keyInfo = $keyInfos->item(0);
+            if ($keyInfo && $keyInfo->parentNode) {
+                $keyInfo->parentNode->removeChild($keyInfo);
+            }
+        }
+        
+        // Cria novo KeyInfo
+        $keyInfo = $this->dom->createElement('KeyInfo');
+        $signature->appendChild($keyInfo);
+
+        // Cria o elemento X509Data
+        $x509Data = $this->dom->createElement('X509Data');
+        $keyInfo->appendChild($x509Data);
+
+        // Extrai informações do certificado
+        $certInfo = openssl_x509_parse($this->certPem);
+        if ($certInfo) {
+            // Adiciona X509IssuerSerial PRIMEIRO (ordem correta)
+            $x509IssuerSerial = $this->dom->createElement('X509IssuerSerial');
+            $x509Data->appendChild($x509IssuerSerial);
+
+            // X509IssuerName
+            $issuerName = $this->montarIssuerName($certInfo['issuer']);
+            $x509IssuerName = $this->dom->createElement('X509IssuerName', $issuerName);
+            $x509IssuerSerial->appendChild($x509IssuerName);
+
+            // X509SerialNumber
+            $serialNumber = $this->formatarSerialNumber($certInfo['serialNumber']);
+            $x509SerialNumber = $this->dom->createElement('X509SerialNumber', $serialNumber);
+            $x509IssuerSerial->appendChild($x509SerialNumber);
+
+            // Adiciona X509SubjectName DEPOIS do X509IssuerSerial
+            if (isset($certInfo['subject'])) {
+                $subjectName = $this->montarSubjectName($certInfo['subject']);
+                $x509SubjectName = $this->dom->createElement('X509SubjectName', $subjectName);
+                $x509Data->appendChild($x509SubjectName);
             }
         }
 
-        if ($container->parentNode) {
-            $container->parentNode->removeChild($container);
-        }
-
-        if (!$sig instanceof DOMElement) {
-            throw new RuntimeException('Falha ao criar nó Signature.');
-        }
-
-        // Confere X509Certificate
-        $this->assertSignatureHasX509Certificate($sig);
-
-        // Importa pro DOM final
-        $sigImported = $this->dom->importNode($sig, true);
-        return $sigImported instanceof DOMElement ? $sigImported : $sig;
+        // Adiciona o certificado X509 POR ÚLTIMO (ordem correta)
+        $x509Cert = $this->dom->createElement('X509Certificate', $this->normalizeCert($this->certPem));
+        $x509Data->appendChild($x509Cert);
     }
 
-    private function assertCertPemIsValid(string $pem): void
+    /**
+     * Monta o issuer name no formato esperado
+     */
+    private function montarIssuerName(array $issuer): string
     {
-        $pem = trim($pem);
-
-        if (strpos($pem, '-----BEGIN CERTIFICATE-----') === false || strpos($pem, '-----END CERTIFICATE-----') === false) {
-            throw new RuntimeException('Certificado PEM inválido: faltando BEGIN/END CERTIFICATE.');
+        $parts = [];
+        $order = ['C', 'ST', 'L', 'O', 'OU', 'CN', 'emailAddress'];
+        
+        foreach ($order as $key) {
+            if (isset($issuer[$key])) {
+                $parts[] = "$key=" . $issuer[$key];
+            }
         }
-
-        // tenta abrir como X509 (validação real)
-        $x509 = @openssl_x509_read($pem);
-        if (!$x509) {
-            throw new RuntimeException('Certificado PEM inválido (openssl_x509_read falhou). Verifique extração do PFX.');
-        }
-        openssl_x509_free($x509);
+        
+        return implode(', ', $parts);
     }
 
-    private function assertSignatureHasX509Certificate(DOMElement $sig): void
+    /**
+     * Monta o subject name no formato esperado
+     */
+    private function montarSubjectName(array $subject): string
     {
-        $tmp = new DOMDocument('1.0', 'UTF-8');
-        $tmp->loadXML($sig->ownerDocument->saveXML($sig));
-
-        $xp = new DOMXPath($tmp);
-        $xp->registerNamespace('ds', 'http://www.w3.org/2000/09/xmldsig#');
-
-        $node = $xp->query('//ds:X509Data/ds:X509Certificate')->item(0);
-        if (!$node || trim((string)$node->nodeValue) === '') {
-            throw new RuntimeException('Assinatura gerada sem X509Certificate (X509Data vazio). Verifique extração do PFX.');
+        $parts = [];
+        $order = ['C', 'ST', 'L', 'O', 'OU', 'CN', 'emailAddress'];
+        
+        foreach ($order as $key) {
+            if (isset($subject[$key])) {
+                $parts[] = "$key=" . $subject[$key];
+            }
         }
+        
+        return implode(', ', $parts);
+    }
+
+    /**
+     * Formata o número de série do certificado
+     */
+    private function formatarSerialNumber(string $serialNumber): string
+    {
+        // Remove espaços e converte para decimal se estiver em hexadecimal
+        $serialNumber = str_replace(' ', '', $serialNumber);
+        if (strpos($serialNumber, ':') !== false) {
+            // Está em formato hexadecimal com separadores
+            $hex = str_replace(':', '', $serialNumber);
+            return strval(hexdec($hex));
+        }
+        return $serialNumber;
+    }
+
+    /**
+     * Remove o prefixo ds: e converte xmlns:ds para xmlns padrão na assinatura XML
+     * Mantém a estrutura correta do XMLDSig
+     */
+    private function removerPrefixoDs(string $xml): string
+    {
+        // Converte xmlns:ds para xmlns padrão apenas nos elementos da assinatura
+        $xml = str_replace('xmlns:ds="http://www.w3.org/2000/09/xmldsig#"', 'xmlns="http://www.w3.org/2000/09/xmldsig#"', $xml);
+        
+        // Remove o prefixo ds: dos elementos
+        $xml = str_replace('<ds:', '<', $xml);
+        $xml = str_replace('</ds:', '</', $xml);
+        
+        // Mantém a indentação e não remove espaços desnecessariamente
+        return $xml;
     }
 
     // =========================================================
-    // PFX -> PEM (ROBUSTO)
+    // PFX -> PEM (memória)
     // =========================================================
 
     private function extractFromPfx(): void
@@ -321,47 +300,109 @@ class AssinaturaChapeco
             throw new RuntimeException("Falha ao ler PFX. Verifique senha/arquivo.");
         }
 
-        $pkey = $certs['pkey'] ?? null;
         $cert = $certs['cert'] ?? null;
+        $pkey = $certs['pkey'] ?? null;
 
-        // Fallback: alguns PFX trazem cert útil em extracerts
-        if ((!$cert || trim((string)$cert) === '') && !empty($certs['extracerts']) && is_array($certs['extracerts'])) {
-            $cert = $certs['extracerts'][0] ?? null;
-        }
-
-        if (!$pkey || !$cert) {
+        if (!$cert || !$pkey) {
             throw new RuntimeException("PFX lido, mas cert/pkey vazios.");
         }
 
-        $cert = $this->sanitizeCertPem($cert);
-
-        // valida com openssl
-        $x509 = @openssl_x509_read($cert);
-        if (!$x509) {
-            throw new RuntimeException("Cert extraído do PFX não é X509 válido (openssl_x509_read falhou).");
-        }
-        openssl_x509_free($x509);
-
-        $this->keyPem  = $pkey;
         $this->certPem = $cert;
+        $this->keyPem  = $pkey;
     }
 
     /**
-     * Remove "Bag Attributes" e mantém apenas o bloco BEGIN/END CERTIFICATE.
+     * Assina XML para Chapecó (padrão ABRASF) - Função genérica
+     * Remove duplicação de código entre assinarGerarNfseEnvio e assinarLoteRps
+     * 
+     * @param string $xml XML a ser assinado
+     * @param string $nodeName Nome do nó a ser assinado ('GerarNfseEnvio' ou 'LoteRps')
+     * @param bool $removeInfDeclaracaoId Se deve remover Id de InfDeclaracaoPrestacaoServico (usado para LoteRps)
+     * @return string XML assinado
      */
-    private function sanitizeCertPem(string $pem): string
+    private function assinarXml(string $xml, string $nodeName, bool $removeInfDeclaracaoId = false): string
     {
-        $pem = trim($pem);
+        $this->loadDom($xml);
+        $this->removerAssinaturas();
 
-        if (preg_match('/-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----/s', $pem, $m)) {
-            $body = preg_replace('/\s+/', '', trim($m[1]));
-            if ($body === '') {
-                throw new RuntimeException('Bloco do certificado encontrado, mas vazio.');
+        $node = $this->getFirstNodeByLocalName($nodeName);
+        if (!$node) {
+            throw new InvalidArgumentException("Nó {$nodeName} não encontrado no XML.");
+        }
+        
+        // Garante que o nó tenha um ID
+        $id = $this->ensureId($node, $nodeName);
+        
+        // Remove o atributo Id de InfDeclaracaoPrestacaoServico se solicitado
+        if ($removeInfDeclaracaoId) {
+            $infDeclaracoes = $this->xpath->query('//*[local-name()="InfDeclaracaoPrestacaoServico"]');
+            foreach ($infDeclaracoes as $infDeclaracao) {
+                if ($infDeclaracao->hasAttribute('Id')) {
+                    $infDeclaracao->removeAttribute('Id');
+                }
             }
-            return "-----BEGIN CERTIFICATE-----\n" . chunk_split($body, 64, "\n") . "-----END CERTIFICATE-----\n";
+        }
+        
+        // Assina o nó
+        $this->signElementById($node, $id);
+
+        // Remove qualquer <Signature> fora do nó principal
+        $signatures = $this->dom->getElementsByTagName('Signature');
+        foreach ($signatures as $sig) {
+            if ($sig->parentNode !== $node) {
+                $sig->parentNode->removeChild($sig);
+            }
         }
 
-        // Se não encontrou o bloco, devolve como está (vai falhar na validação depois)
-        return $pem;
+        // Garante que só exista UMA Signature dentro do nó
+        $sigCount = 0;
+        foreach ($node->childNodes as $child) {
+            if ($child->nodeName === 'Signature' || $child->localName === 'Signature') {
+                $sigCount++;
+                if ($sigCount > 1) {
+                    $node->removeChild($child);
+                }
+            }
+        }
+
+        $xml = $this->dom->saveXML();
+        $xml = $this->removerPrefixoDs($xml); // Remove o prefixo ds:
+        
+        return $xml;
+    }
+
+    /**
+     * Assina o nó GerarNfseEnvio para Chapecó (padrão correto)
+     * @deprecated Use assinarXmlGenerico() para maior flexibilidade
+     */
+    public function assinarGerarNfseEnvio(string $xml): string
+    {
+        return $this->assinarXml($xml, 'GerarNfseEnvio', false);
+    }
+
+    /**
+     * Assina o LoteRps para Chapecó - Estrutura 100% igual ao modelo
+     * @deprecated Use assinarXmlGenerico() para maior flexibilidade
+     */
+    public function assinarLoteRps(string $xml): string
+    {
+        return $this->assinarXml($xml, 'LoteRps', true);
+    }
+
+    /**
+     * Assina XML para Chapecó (função genérica recomendada)
+     * 
+     * @param string $xml XML a ser assinado
+     * @param string $tipo Tipo de assinatura ('GerarNfseEnvio' ou 'LoteRps')
+     * @return string XML assinado
+     */
+    public function assinarXmlGenerico(string $xml, string $tipo = 'GerarNfseEnvio'): string
+    {
+        $tiposValidos = ['GerarNfseEnvio', 'LoteRps'];
+        if (!in_array($tipo, $tiposValidos, true)) {
+            throw new InvalidArgumentException("Tipo de assinatura inválido: {$tipo}. Use: " . implode(', ', $tiposValidos));
+        }
+        
+        return $this->assinarXml($xml, $tipo, $tipo === 'LoteRps');
     }
 }

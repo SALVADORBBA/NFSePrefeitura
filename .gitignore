@@ -1,5 +1,6 @@
 ExemploMotorMake.php
 gerador_dados.php
+cola.php
 # Ignorar arquivos temporários e de log
 *.tmp
 *.log
